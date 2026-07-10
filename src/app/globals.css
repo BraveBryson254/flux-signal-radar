@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --color-bg: #0b0e14;
+  --color-panel: #12161f;
+  --color-panel-raised: #171c28;
+  --color-border: #232838;
+
+  /* Signature accent — radar phosphor amber */
+  --color-accent: #e8a33d;
+  --color-accent-dim: #a67328;
+
+  /* Signal direction colors */
+  --color-bull: #3ddbd9;
+  --color-bear: #e85d75;
+  --color-neutral: #8890a0;
+
+  /* Text */
+  --color-text: #edeff3;
+  --color-text-muted: #8890a0;
+  --color-text-faint: #565d70;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-panel: var(--color-panel);
+  --color-panel-raised: var(--color-panel-raised);
+  --color-border: var(--color-border);
+  --color-accent: var(--color-accent);
+  --color-accent-dim: var(--color-accent-dim);
+  --color-bull: var(--color-bull);
+  --color-bear: var(--color-bear);
+  --color-neutral: var(--color-neutral);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+/* Respect reduced-motion preference globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Subtle scrollbar to match the terminal feel */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+}
