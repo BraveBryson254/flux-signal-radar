@@ -1,6 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+
+const SCAN_INTERVAL_SECONDS = 60;
 
 // Fixed blip positions (radius = confluence strength, angle = arbitrary spread).
 // Static values keep the sweep animation deterministic between server/client render.
@@ -23,9 +26,23 @@ function polarToXY(angleDeg: number, radiusFraction: number, size: number) {
 export default function RadarHero() {
   const size = 480;
   const rings = [0.25, 0.5, 0.75, 1];
+  const [secondsLeft, setSecondsLeft] = useState(SCAN_INTERVAL_SECONDS);
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const badgeOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? SCAN_INTERVAL_SECONDS : s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <section className="relative overflow-hidden border-b border-border bg-bg px-6 pt-28 pb-20 md:pt-36 md:pb-28">
+    <section ref={sectionRef} className="relative overflow-hidden border-b border-border px-6 pt-28 pb-20 md:pt-36 md:pb-28">
       {/* Ambient grid backdrop */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.06]"
@@ -43,13 +60,14 @@ export default function RadarHero() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            style={{ opacity: badgeOpacity }}
             className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-panel px-3 py-1 font-mono text-xs text-accent"
           >
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
             </span>
-            LIVE SCAN — 6 STRATEGIES ACTIVE
+            LIVE SCAN — NEXT PASS IN {String(secondsLeft).padStart(2, "0")}S
           </motion.div>
 
           <motion.h1
@@ -83,13 +101,13 @@ export default function RadarHero() {
             className="mt-8 flex flex-col items-center gap-3 sm:flex-row md:justify-start"
           >
             <a
-              href="#feed"
+              href="/feed"
               className="w-full rounded-lg bg-accent px-6 py-3 text-center font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02] active:scale-[0.98] sm:w-auto"
             >
               View live signals
             </a>
             <a
-              href="#methodology"
+              href="/methodology"
               className="w-full rounded-lg border border-border px-6 py-3 text-center font-body text-sm font-semibold text-text transition-colors hover:border-text-faint sm:w-auto"
             >
               How scoring works

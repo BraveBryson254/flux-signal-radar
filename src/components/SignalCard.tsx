@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Signal } from "@/lib/types";
 import { strategies, sessionMeta } from "@/lib/mockData";
+import Sparkline from "./Sparkline";
 
 function ConfluenceGauge({ value, direction }: { value: number; direction: Signal["direction"] }) {
   const radius = 26;
@@ -69,9 +70,12 @@ export default function SignalCard({ signal, index }: { signal: Signal; index: n
             </p>
           </div>
         </div>
-        <span className="whitespace-nowrap font-mono text-xs text-text-muted">
-          R:R {signal.riskReward.toFixed(1)}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <Sparkline points={signal.trend} color={directionColor} />
+          <span className="whitespace-nowrap font-mono text-xs text-text-muted">
+            R:R {signal.riskReward.toFixed(1)}
+          </span>
+        </div>
       </div>
 
       {/* Price levels */}

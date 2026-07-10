@@ -31,4 +31,5 @@ export interface Signal {
   stop: number;
   target: number;
   detectedAt: string; // ISO-ish label, e.g. "2m ago"
+  trend: number[]; // recent normalized price points, oldest to newest, for the sparkline
 }

@@ -54,6 +54,7 @@ export const mockSignals: Signal[] = [
     stop: 2406.8,
     target: 2429.2,
     detectedAt: "2m ago",
+    trend: [0.3, 0.35, 0.32, 0.4, 0.46, 0.52, 0.58, 0.64, 0.7, 0.8],
   },
   {
     id: "sig-2",
@@ -69,6 +70,7 @@ export const mockSignals: Signal[] = [
     stop: 1.0821,
     target: 1.0893,
     detectedAt: "6m ago",
+    trend: [0.5, 0.48, 0.44, 0.47, 0.42, 0.5, 0.58, 0.62, 0.68, 0.74],
   },
   {
     id: "sig-3",
@@ -84,6 +86,7 @@ export const mockSignals: Signal[] = [
     stop: 19910,
     target: 19710,
     detectedAt: "11m ago",
+    trend: [0.7, 0.68, 0.72, 0.65, 0.6, 0.55, 0.5, 0.44, 0.38, 0.3],
   },
   {
     id: "sig-4",
@@ -99,6 +102,7 @@ export const mockSignals: Signal[] = [
     stop: 1.2758,
     target: 1.2677,
     detectedAt: "14m ago",
+    trend: [0.6, 0.63, 0.58, 0.54, 0.5, 0.46, 0.4, 0.36, 0.3, 0.26],
   },
   {
     id: "sig-5",
@@ -114,6 +118,7 @@ export const mockSignals: Signal[] = [
     stop: 2423.7,
     target: 2410.3,
     detectedAt: "19m ago",
+    trend: [0.4, 0.44, 0.48, 0.45, 0.5, 0.46, 0.4, 0.34, 0.28, 0.24],
   },
   {
     id: "sig-6",
@@ -129,6 +134,7 @@ export const mockSignals: Signal[] = [
     stop: 19520,
     target: 19828,
     detectedAt: "24m ago",
+    trend: [0.35, 0.38, 0.42, 0.4, 0.46, 0.52, 0.58, 0.62, 0.68, 0.72],
   },
 ];
 

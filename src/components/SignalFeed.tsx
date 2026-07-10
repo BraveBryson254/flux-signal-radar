@@ -36,7 +36,7 @@ export default function SignalFeed() {
   }, [activeSession, minConfluence, activeStrategies]);
 
   return (
-    <section id="feed" className="bg-bg px-6 py-20 md:py-28">
+    <section id="feed" className="px-6 py-20 md:py-28">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>

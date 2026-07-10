@@ -28,7 +28,7 @@ const pipeline = [
 
 export default function StrategyStrip() {
   return (
-    <section id="methodology" className="border-b border-border bg-bg px-6 py-20 md:py-28">
+    <section id="methodology" className="border-b border-border px-6 py-20 md:py-28">
       <div className="mx-auto max-w-6xl">
         <div className="mb-14 max-w-2xl">
           <span className="font-mono text-xs tracking-widest text-accent">

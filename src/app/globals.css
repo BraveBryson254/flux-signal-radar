@@ -2,24 +2,24 @@
 
 :root {
   /* Surfaces */
-  --color-bg: #0b0e14;
-  --color-panel: #12161f;
-  --color-panel-raised: #171c28;
-  --color-border: #232838;
+  --color-bg: #0d0b14;
+  --color-panel: #17131f;
+  --color-panel-raised: #1d1828;
+  --color-border: #2a2438;
 
-  /* Signature accent — radar phosphor amber */
-  --color-accent: #e8a33d;
-  --color-accent-dim: #a67328;
+  /* Signature accent — electric violet */
+  --color-accent: #9d4edd;
+  --color-accent-dim: #6b3399;
 
   /* Signal direction colors */
-  --color-bull: #3ddbd9;
-  --color-bear: #e85d75;
-  --color-neutral: #8890a0;
+  --color-bull: #c8ff4d;
+  --color-bear: #ff5c7a;
+  --color-neutral: #8b85a0;
 
   /* Text */
-  --color-text: #edeff3;
-  --color-text-muted: #8890a0;
-  --color-text-faint: #565d70;
+  --color-text: #f2eefa;
+  --color-text-muted: #8b85a0;
+  --color-text-faint: #5a5468;
 }
 
 @theme inline {

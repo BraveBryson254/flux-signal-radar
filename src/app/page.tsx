@@ -1,7 +1,8 @@
 import Header from "@/components/Header";
 import RadarHero from "@/components/RadarHero";
-import StrategyStrip from "@/components/StrategyStrip";
-import SignalFeed from "@/components/SignalFeed";
+import FeedPreview from "@/components/FeedPreview";
+import PipelineTeaser from "@/components/PipelineTeaser";
+import PricingTeaser from "@/components/PricingTeaser";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -9,8 +10,9 @@ export default function Home() {
     <main>
       <Header />
       <RadarHero />
-      <StrategyStrip />
-      <SignalFeed />
+      <FeedPreview />
+      <PipelineTeaser />
+      <PricingTeaser />
       <Footer />
     </main>
   );
