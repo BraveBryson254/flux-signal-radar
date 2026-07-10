@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import { fadeUp, ease, duration } from "@/lib/motionSystem";
 
 /**
  * Shared shell for every dashboard widget — consistent border, padding,
- * header, and scroll-in animation. Keeps the grid visually coherent
- * across tiers.
+ * header, and scroll-in animation from the central motion system.
  */
 export default function Widget({
   title,
@@ -23,10 +23,11 @@ export default function Widget({
 }) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.3) }}
-      className={`rounded-xl border border-border bg-panel p-5 ${className}`}
+      variants={fadeUp}
+      initial="hidden"
+      animate="show"
+      transition={{ duration: duration.base, ease: ease.entrance, delay: Math.min(index * 0.04, 0.3) }}
+      className={`rounded-xl border border-border bg-panel p-5 transition-shadow duration-300 hover:shadow-[0_0_24px_-12px_var(--color-accent)] ${className}`}
     >
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between">

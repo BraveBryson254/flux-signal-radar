@@ -24,6 +24,7 @@ import {
   AchievementsWidget,
 } from "@/components/widgets/GamificationWidgets";
 import { NextLevelWidget } from "@/components/widgets/NextLevelWidget";
+import { TraderJourneyWidget } from "@/components/widgets/TraderJourneyWidget";
 
 export default function DashboardPage() {
   const { user, isLoading, setTier, logout } = useAuth();
@@ -100,6 +101,7 @@ export default function DashboardPage() {
           {/* Core free-tier ecosystem — everyone sees these */}
           <DailySignalWidget index={2} />
           <MarketOutlookWidget index={3} />
+          <TraderJourneyWidget index={4} />
           <MissionsWidget index={4} />
 
           <StreakWidget user={user} index={5} />

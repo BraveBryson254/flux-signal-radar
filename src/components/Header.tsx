@@ -6,11 +6,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Radar, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/mockAuth";
+import NotificationCenter from "@/components/NotificationCenter";
 
-const links = [
+const marketingLinks = [
   { href: "/feed", label: "Live feed" },
   { href: "/methodology", label: "Methodology" },
   { href: "/pricing", label: "Pricing" },
+];
+
+const appLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/academy", label: "Academy" },
+  { href: "/games", label: "Arena" },
+  { href: "/community", label: "Community" },
+  { href: "/coach", label: "Coach" },
 ];
 
 export default function Header() {
@@ -67,7 +76,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden items-center gap-8 font-body text-sm text-text-muted md:flex">
-          {links.map((link) => (
+          {(user ? appLinks : marketingLinks).map((link) => (
             <Link key={link.href} href={link.href} className="transition-colors hover:text-text">
               {link.label}
             </Link>
@@ -76,12 +85,15 @@ export default function Header() {
 
         <div className="hidden items-center gap-3 md:flex">
           {user ? (
-            <button
-              onClick={handleOpenScanner}
-              className="rounded-lg bg-accent px-4 py-2 font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02]"
-            >
-              Open scanner
-            </button>
+            <>
+              <NotificationCenter />
+              <Link
+                href="/profile"
+                className="rounded-lg bg-accent px-4 py-2 font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02]"
+              >
+                Profile
+              </Link>
+            </>
           ) : (
             <>
               <Link
@@ -120,7 +132,7 @@ export default function Header() {
             className="overflow-hidden border-b border-border bg-bg md:hidden"
           >
             <nav className="flex flex-col gap-1 px-6 py-4">
-              {links.map((link) => (
+              {(user ? appLinks : marketingLinks).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -130,7 +142,15 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
-              {!user && (
+              {user ? (
+                <Link
+                  href="/profile"
+                  onClick={closeMenu}
+                  className="rounded-lg px-3 py-3 font-body text-base text-text-muted transition-colors hover:bg-panel hover:text-text"
+                >
+                  Profile
+                </Link>
+              ) : (
                 <Link
                   href="/login"
                   onClick={closeMenu}
@@ -139,12 +159,14 @@ export default function Header() {
                   Log in
                 </Link>
               )}
-              <button
-                onClick={handleOpenScanner}
-                className="mt-2 rounded-lg bg-accent px-3 py-3 text-center font-body text-sm font-semibold text-bg"
-              >
-                {user ? "Open scanner" : "Start free trial"}
-              </button>
+              {!user && (
+                <button
+                  onClick={handleOpenScanner}
+                  className="mt-2 rounded-lg bg-accent px-3 py-3 text-center font-body text-sm font-semibold text-bg"
+                >
+                  Start free trial
+                </button>
+              )}
             </nav>
           </motion.div>
         )}

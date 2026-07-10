@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight, ArrowDownRight, Trophy } from "lucide-react";
 import Widget from "./Widget";
 import SignalCard from "../SignalCard";
+import Leaderboard from "../Leaderboard";
 import { mockSignals } from "@/lib/mockData";
 import {
   marketOutlook,
@@ -207,30 +208,15 @@ export function LeaderboardWidget({ index }: { index: number }) {
       index={index}
       action={<span className="font-mono text-xs text-text-faint">Kenya · Weekly</span>}
     >
-      <div className="space-y-1">
-        {leaderboard.map((e) => (
-          <div
-            key={e.rank}
-            className="flex items-center gap-3 rounded-lg px-2 py-1.5"
-            style={{ background: e.you ? "rgba(157,78,221,0.1)" : "transparent" }}
-          >
-            <span
-              className="w-5 font-mono text-xs"
-              style={{ color: e.rank <= 3 ? "var(--color-accent)" : "var(--color-text-faint)" }}
-            >
-              {e.rank}
-            </span>
-            <span
-              className="flex-1 font-body text-sm"
-              style={{ color: e.you ? "var(--color-accent)" : "var(--color-text)" }}
-            >
-              {e.name}
-            </span>
-            <span className="font-mono text-xs text-text-faint">{e.region}</span>
-            <span className="font-mono text-xs text-text-muted">{e.xp.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
+      <Leaderboard
+        rows={leaderboard.map((e) => ({
+          rank: e.rank,
+          name: e.name,
+          region: e.region,
+          value: e.xp.toLocaleString(),
+          you: e.you,
+        }))}
+      />
     </Widget>
   );
 }

@@ -44,10 +44,13 @@ export function XpLevelWidget({ user, index }: { user: MockUser; index: number }
               transition={{ duration: 0.7, ease: "easeOut" }}
             />
           </div>
-          <div className="mt-3 flex items-center gap-1.5 font-mono text-xs text-bull">
+          <a
+            href="/rewards"
+            className="mt-3 flex items-center gap-1.5 font-mono text-xs text-bull hover:underline"
+          >
             <Coins size={13} />
             {user.coins} coins
-          </div>
+          </a>
         </div>
       </div>
     </Widget>
@@ -120,9 +123,9 @@ export function MissionsWidget({ index }: { index: number }) {
       title="Daily missions"
       index={index}
       action={
-        <span className="font-mono text-xs text-text-faint">
+        <a href="/missions" className="font-mono text-xs text-text-faint hover:text-accent">
           {doneCount}/{dailyMissions.length}
-        </span>
+        </a>
       }
     >
       <div className="divide-y divide-border">
@@ -144,7 +147,15 @@ export function MissionsWidget({ index }: { index: number }) {
 
 export function AchievementsWidget({ index }: { index: number }) {
   return (
-    <Widget title="Achievements" index={index}>
+    <Widget
+      title="Achievements"
+      index={index}
+      action={
+        <a href="/achievements" className="font-mono text-xs text-text-faint hover:text-accent">
+          View all
+        </a>
+      }
+    >
       <div className="grid grid-cols-3 gap-3">
         {achievements.map((a) => {
           const Icon = (Icons[a.icon as keyof typeof Icons] ??

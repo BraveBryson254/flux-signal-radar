@@ -24,6 +24,7 @@ export interface MockUser {
   level: number;
   coins: number;
   loginStreak: number;
+  claimedMissionIds: string[];
 }
 
 interface AuthContextValue {
@@ -33,6 +34,7 @@ interface AuthContextValue {
   signup: (email: string, name: string) => void;
   logout: () => void;
   setTier: (tier: Tier) => void;
+  claimMission: (id: string, xp: number, coins?: number) => { leveledUp: boolean; newLevel: number };
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -52,6 +54,7 @@ function seedUser(email: string, name: string): MockUser {
     level: 7,
     coins: 380,
     loginStreak: 4,
+    claimedMissionIds: [],
   };
 }
 
@@ -85,8 +88,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist({ ...user, tier });
   };
 
+  const XP_PER_LEVEL = 250;
+
+  const claimMission = (id: string, xp: number, coins = 0) => {
+    if (!user || user.claimedMissionIds.includes(id)) {
+      return { leveledUp: false, newLevel: user?.level ?? 1 };
+    }
+    const newXp = user.xp + xp;
+    const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+    const leveledUp = newLevel > user.level;
+    persist({
+      ...user,
+      xp: newXp,
+      level: newLevel,
+      coins: user.coins + coins,
+      claimedMissionIds: [...user.claimedMissionIds, id],
+    });
+    return { leveledUp, newLevel };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, setTier }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, signup, logout, setTier, claimMission }}
+    >
       {children}
     </AuthContext.Provider>
   );
