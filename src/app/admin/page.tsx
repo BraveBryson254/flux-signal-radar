@@ -10,7 +10,7 @@ import { tiers } from "@/lib/tiers";
 // users table once auth and billing are wired in.
 const mockStats = {
   totalUsers: 214,
-  byTier: { free: 148, basic: 41, moderate: 19, pro: 6 },
+  byTier: { free: 148, basic: 41, pro: 19, elite: 6 },
   mrr: 41 * 10 + 19 * 20 + 6 * 30,
   recentActivity: [
     { type: "signup", label: "new@trader.com signed up", time: "12m ago" },

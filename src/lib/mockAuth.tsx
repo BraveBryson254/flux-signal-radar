@@ -1,25 +1,29 @@
 "use client";
 
 /**
- * MOCK AUTH LAYER — replace with real Clerk or Supabase Auth.
+ * MOCK AUTH LAYER — replace with real Supabase Auth.
  *
- * This context simulates a logged-in user so every page (dashboard,
- * admin, tier-gated content) is fully built and clickable today.
- * To go live: swap the provider's internals for your chosen auth
- * SDK's hooks (e.g. Clerk's useUser()) and keep the same Tier/User
- * shape so no consuming component needs to change.
+ * Simulates a logged-in user so every gated page is fully clickable
+ * today. To go live: swap the provider internals for Supabase Auth
+ * hooks, keeping the same Tier/User shape so no consuming component
+ * needs to change.
  */
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-export type Tier = "free" | "basic" | "moderate" | "pro";
+export type Tier = "free" | "basic" | "pro" | "elite";
 
 export interface MockUser {
   id: string;
   email: string;
   name: string;
   tier: Tier;
-  trialEndsAt: string | null; // ISO date, null if not on trial
+  trialEndsAt: string | null;
+  // Gamification state — backend-ready, persisted in Supabase later.
+  xp: number;
+  level: number;
+  coins: number;
+  loginStreak: number;
 }
 
 interface AuthContextValue {
@@ -28,12 +32,28 @@ interface AuthContextValue {
   login: (email: string) => void;
   signup: (email: string, name: string) => void;
   logout: () => void;
-  setTier: (tier: Tier) => void; // dev helper to preview each tier
+  setTier: (tier: Tier) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "flux-signal-radar:mock-user";
+
+function seedUser(email: string, name: string): MockUser {
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 7);
+  return {
+    id: "mock-user-1",
+    email,
+    name,
+    tier: "basic",
+    trialEndsAt: trialEnd.toISOString(),
+    xp: 1240,
+    level: 7,
+    coins: 380,
+    loginStreak: 4,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MockUser | null>(null);
@@ -57,32 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else window.localStorage.removeItem(STORAGE_KEY);
   };
 
-  const login = (email: string) => {
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 7);
-    persist({
-      id: "mock-user-1",
-      email,
-      name: email.split("@")[0],
-      tier: "basic",
-      trialEndsAt: trialEnd.toISOString(),
-    });
-  };
-
-  const signup = (email: string, name: string) => {
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 7);
-    persist({
-      id: "mock-user-1",
-      email,
-      name,
-      tier: "basic",
-      trialEndsAt: trialEnd.toISOString(),
-    });
-  };
-
+  const login = (email: string) => persist(seedUser(email, email.split("@")[0]));
+  const signup = (email: string, name: string) => persist(seedUser(email, name));
   const logout = () => persist(null);
-
   const setTier = (tier: Tier) => {
     if (!user) return;
     persist({ ...user, tier });

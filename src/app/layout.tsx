@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ParticleField from "@/components/ParticleField";
 import { AuthProvider } from "@/lib/mockAuth";
+import { CurrencyProvider } from "@/lib/currency";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -39,7 +40,9 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ParticleField />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <CurrencyProvider>{children}</CurrencyProvider>
+        </AuthProvider>
       </body>
     </html>
   );

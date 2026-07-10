@@ -2,21 +2,28 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Lock } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import SignalCard from "@/components/SignalCard";
 import { useAuth, Tier } from "@/lib/mockAuth";
-import { mockSignals } from "@/lib/mockData";
-import { hasAccess, tiers } from "@/lib/tiers";
-
-function daysLeft(iso: string | null): number | null {
-  if (!iso) return null;
-  const diff = new Date(iso).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
+import { tiers, hasAccess, tierById } from "@/lib/tiers";
+import {
+  WelcomeWidget,
+  DailySignalWidget,
+  MarketOutlookWidget,
+  MarketSessionsWidget,
+  TrendingWidget,
+  LearningProgressWidget,
+  CompetitionWidget,
+  LeaderboardWidget,
+  RecentActivityWidget,
+} from "@/components/widgets/EcosystemWidgets";
+import {
+  XpLevelWidget,
+  StreakWidget,
+  MissionsWidget,
+  AchievementsWidget,
+} from "@/components/widgets/GamificationWidgets";
+import { NextLevelWidget } from "@/components/widgets/NextLevelWidget";
 
 export default function DashboardPage() {
   const { user, isLoading, setTier, logout } = useAuth();
@@ -34,23 +41,18 @@ export default function DashboardPage() {
     );
   }
 
-  const trialDays = daysLeft(user.trialEndsAt);
-  const canSeeWatchlist = hasAccess(user.tier, "moderate");
-  const canSeeAlerts = hasAccess(user.tier, "moderate");
-  const canSeeApi = hasAccess(user.tier, "pro");
+  const persona = tierById(user.tier).persona;
 
   return (
     <main>
       <Header />
       <div className="mx-auto max-w-6xl px-6 pt-28 pb-20">
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        {/* Header row */}
+        <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="font-display text-2xl font-semibold text-text">
-              Welcome back, {user.name}
-            </h1>
+            <h1 className="font-display text-2xl font-semibold text-text">Command center</h1>
             <p className="mt-1 font-mono text-xs text-text-faint">
-              {user.tier.toUpperCase()} tier
-              {trialDays !== null && trialDays > 0 && ` · trial ends in ${trialDays}d`}
+              {user.tier.toUpperCase()} · {persona}
             </p>
           </div>
           <button
@@ -64,10 +66,10 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Dev-only tier switcher — lets you preview gating before real billing exists */}
-        <div className="mb-10 rounded-lg border border-dashed border-border bg-panel p-4">
+        {/* Tier preview switcher */}
+        <div className="mb-8 rounded-lg border border-dashed border-border bg-panel/50 p-4">
           <p className="mb-2 font-mono text-[10px] tracking-widest text-text-faint">
-            DEV PREVIEW — SIMULATE TIER (remove once Pesapal is wired in)
+            PREVIEW MODE — SEE HOW THE DASHBOARD GROWS PER TIER
           </p>
           <div className="flex flex-wrap gap-2">
             {tiers.map((t) => (
@@ -78,90 +80,109 @@ export default function DashboardPage() {
                 style={{
                   borderColor: user.tier === t.id ? "var(--color-accent)" : "var(--color-border)",
                   color: user.tier === t.id ? "var(--color-accent)" : "var(--color-text-muted)",
+                  backgroundColor: user.tier === t.id ? "rgba(157,78,221,0.1)" : "transparent",
                 }}
               >
-                {t.name}
+                {t.name} {t.price > 0 ? `$${t.price}` : ""}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Live feed */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-display text-lg font-semibold text-text">Your live feed</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mockSignals.map((signal, i) => (
-              <SignalCard key={signal.id} signal={signal} index={i} />
-            ))}
+        {/* Widget grid — composes based on tier */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Row: welcome spans, gamification alongside */}
+          <div className="md:col-span-2">
+            <WelcomeWidget name={user.name} index={0} />
           </div>
-        </section>
+          <XpLevelWidget user={user} index={1} />
 
-        {/* Watchlist — gated at Moderate */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-display text-lg font-semibold text-text">Watchlist</h2>
-          <GatedPanel
-            unlocked={canSeeWatchlist}
-            requiredLabel="Moderate"
-            description="Track unlimited instruments and get notified the moment a setup appears."
-          />
-        </section>
+          {/* Core free-tier ecosystem — everyone sees these */}
+          <DailySignalWidget index={2} />
+          <MarketOutlookWidget index={3} />
+          <MissionsWidget index={4} />
 
-        {/* Alerts — gated at Moderate */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-display text-lg font-semibold text-text">Alerts</h2>
-          <GatedPanel
-            unlocked={canSeeAlerts}
-            requiredLabel="Moderate"
-            description="Email and Telegram alerts the instant a high-confluence setup appears."
-          />
-        </section>
+          <StreakWidget user={user} index={5} />
+          <LearningProgressWidget index={6} />
+          <CompetitionWidget index={7} />
 
-        {/* API — gated at Pro */}
-        <section>
-          <h2 className="mb-4 font-display text-lg font-semibold text-text">API access</h2>
-          <GatedPanel
-            unlocked={canSeeApi}
-            requiredLabel="Pro"
-            description="Pipe live signals straight into your own MQL5 EA via webhook."
-          />
-        </section>
+          <MarketSessionsWidget index={8} />
+          <AchievementsWidget index={9} />
+          <RecentActivityWidget index={10} />
+
+          <div className="md:col-span-2">
+            <LeaderboardWidget index={11} />
+          </div>
+
+          {/* Basic-tier additions */}
+          {hasAccess(user.tier, "basic") ? (
+            <TrendingWidget index={12} />
+          ) : (
+            <NextLevelWidget
+              requiredTier="basic"
+              title="Trending assets & watchlists"
+              description="Track what's moving and build custom watchlists across every market."
+              index={12}
+            />
+          )}
+
+          {/* Pro-tier additions */}
+          {hasAccess(user.tier, "pro") ? (
+            <ProWidgets />
+          ) : (
+            <NextLevelWidget
+              requiredTier="pro"
+              title="Multi-market analytics"
+              description="Gold, Forex, NASDAQ and US30 analytics with trade replay and AI reviews."
+              index={13}
+            />
+          )}
+
+          {/* Elite-tier additions */}
+          {hasAccess(user.tier, "elite") ? (
+            <EliteWidgets />
+          ) : (
+            <NextLevelWidget
+              requiredTier="elite"
+              title="AI Trading Lab & order flow"
+              description="Institutional liquidity mapping, Smart Money analytics, and an AI trade lab."
+              index={14}
+            />
+          )}
+        </div>
       </div>
       <Footer />
     </main>
   );
 }
 
-function GatedPanel({
-  unlocked,
-  requiredLabel,
-  description,
-}: {
-  unlocked: boolean;
-  requiredLabel: string;
-  description: string;
-}) {
-  if (unlocked) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="rounded-lg border border-border bg-panel p-6"
-      >
-        <p className="font-body text-sm text-text-muted">{description}</p>
-        <p className="mt-3 font-mono text-xs text-bull">Unlocked on your plan.</p>
-      </motion.div>
-    );
-  }
+// Placeholder premium widgets — full builds land in later phases.
+function ProWidgets() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-panel/50 p-8 text-center">
-      <Lock size={18} className="text-text-faint" />
-      <p className="font-body text-sm text-text-muted">{description}</p>
-      <Link
-        href="/pricing"
-        className="mt-1 rounded-lg bg-accent px-4 py-2 font-body text-xs font-semibold text-bg"
-      >
-        Upgrade to {requiredLabel}
-      </Link>
-    </div>
+    <section className="rounded-xl border border-border bg-panel p-5">
+      <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-panel-raised px-2.5 py-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+        <span className="font-mono text-[10px] tracking-widest text-accent">PRO</span>
+      </div>
+      <h3 className="font-display text-sm font-semibold text-text">Multi-market analytics</h3>
+      <p className="mt-1 font-body text-sm text-text-muted">
+        Gold, Forex, NASDAQ & US30 analytics unlocked. Full workstation lands in an upcoming phase.
+      </p>
+    </section>
+  );
+}
+
+function EliteWidgets() {
+  return (
+    <section className="rounded-xl border border-border bg-panel p-5">
+      <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-panel-raised px-2.5 py-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-bull" />
+        <span className="font-mono text-[10px] tracking-widest text-bull">ELITE</span>
+      </div>
+      <h3 className="font-display text-sm font-semibold text-text">AI Trading Lab</h3>
+      <p className="mt-1 font-body text-sm text-text-muted">
+        Institutional order flow & liquidity mapping unlocked. Full lab lands in an upcoming phase.
+      </p>
+    </section>
   );
 }

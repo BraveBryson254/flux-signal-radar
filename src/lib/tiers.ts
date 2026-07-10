@@ -3,7 +3,8 @@ import { Tier } from "./mockAuth";
 export interface TierDefinition {
   id: Tier;
   name: string;
-  price: number; // USD per month, 0 for free
+  persona: string;
+  price: number; // USD/month, 0 for free
   tagline: string;
   features: string[];
   recommended?: boolean;
@@ -12,54 +13,63 @@ export interface TierDefinition {
 export const tiers: TierDefinition[] = [
   {
     id: "free",
-    name: "Free",
+    name: "Apprentice",
+    persona: "Apprentice Trader",
     price: 0,
-    tagline: "One great setup a day, on us.",
+    tagline: "Learn, explore, and build the habit.",
     features: [
-      "1 signal per day (today's single best setup)",
-      "Full entry / stop / target detail",
-      "Confluence score visible",
-      "Strategy tags locked",
+      "Daily free signal + market outlook",
+      "Beginner Academy & sample library",
+      "Trading games, missions & XP",
+      "Weekly demo competitions",
+      "Public community & leaderboard",
+      "Basic trading journal",
     ],
   },
   {
     id: "basic",
     name: "Basic",
+    persona: "Professional Trader",
     price: 10,
-    tagline: "The full live feed, unlocked.",
+    tagline: "Everything you need to trade consistently.",
     features: [
-      "Full live feed, all instruments",
-      "All 6 strategies unlocked",
-      "60 second refresh",
-      "Up to 3 watchlist pairs",
-    ],
-  },
-  {
-    id: "moderate",
-    name: "Moderate",
-    price: 20,
-    tagline: "Stop babysitting the dashboard.",
-    recommended: true,
-    features: [
-      "Everything in Basic",
-      "15 second refresh",
-      "Unlimited watchlist",
-      "Email + Telegram alerts",
-      "Win-rate & avg R per strategy",
+      "Unlimited signals + full history",
+      "Full Academy, library & video center",
+      "Advanced journal & personal analytics",
+      "Watchlists, alerts & saved charts",
+      "Standard AI Trading Coach",
+      "Competition participation",
     ],
   },
   {
     id: "pro",
     name: "Pro",
-    price: 30,
-    tagline: "Wire it straight into your EA.",
+    persona: "Trading Workstation",
+    price: 20,
+    recommended: true,
+    tagline: "A professional multi-market workstation.",
     features: [
-      "Everything in Moderate",
-      "Real-time refresh",
-      "Push alerts",
-      "Full backtest archive",
-      "API / webhook access",
+      "Everything in Basic",
+      "Advanced scanner & multi-market dashboard",
+      "Gold / Forex / NASDAQ / US30 analytics",
+      "Trade replay & AI trade reviews",
+      "Psychology, risk & portfolio analytics",
       "Priority support",
+    ],
+  },
+  {
+    id: "elite",
+    name: "Elite",
+    persona: "Institutional Grade",
+    price: 30,
+    tagline: "The flagship, institutional-grade platform.",
+    features: [
+      "Everything in Pro",
+      "AI Trading Lab & order flow dashboard",
+      "Liquidity mapping & Smart Money analytics",
+      "Elite competitions & VIP leaderboards",
+      "Private community & mentorship",
+      "API & automation placeholders",
     ],
   },
 ];
@@ -67,10 +77,14 @@ export const tiers: TierDefinition[] = [
 export const tierRank: Record<Tier, number> = {
   free: 0,
   basic: 1,
-  moderate: 2,
-  pro: 3,
+  pro: 2,
+  elite: 3,
 };
 
 export function hasAccess(userTier: Tier, requiredTier: Tier): boolean {
   return tierRank[userTier] >= tierRank[requiredTier];
+}
+
+export function tierById(id: Tier): TierDefinition {
+  return tiers.find((t) => t.id === id)!;
 }

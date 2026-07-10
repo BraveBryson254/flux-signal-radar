@@ -6,8 +6,10 @@ import { Check } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { tiers } from "@/lib/tiers";
+import { useCurrency, Currency } from "@/lib/currency";
 
 export default function PricingPage() {
+  const { format, currency, setCurrency } = useCurrency();
   return (
     <main>
       <Header />
@@ -24,6 +26,21 @@ export default function PricingPage() {
               7-day free trial on every paid tier. No card required to start —
               you only choose a plan when the trial ends.
             </p>
+            <div className="mt-5 flex justify-center gap-2">
+              {(["USD", "KES", "EUR", "GBP"] as Currency[]).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCurrency(c)}
+                  className="rounded-full border px-3 py-1 font-mono text-xs transition-colors"
+                  style={{
+                    borderColor: currency === c ? "var(--color-accent)" : "var(--color-border)",
+                    color: currency === c ? "var(--color-accent)" : "var(--color-text-muted)",
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -52,7 +69,7 @@ export default function PricingPage() {
 
                 <div className="mt-5 flex items-baseline gap-1">
                   <span className="font-display text-3xl font-semibold text-text">
-                    ${tier.price}
+                    {format(tier.price)}
                   </span>
                   {tier.price > 0 && (
                     <span className="font-body text-sm text-text-faint">/mo</span>
