@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const { signup } = useAuth();
   const router = useRouter();
 
@@ -27,11 +28,44 @@ export default function SignupPage() {
     }
 
     setSubmitting(true);
-    // MOCK — swap for real Supabase Auth sign-up call
-    await new Promise((r) => setTimeout(r, 600));
-    signup(email, name);
+    const { error: signupError, needsEmailConfirmation } = await signup(email, password, name);
+    setSubmitting(false);
+
+    if (signupError) {
+      setError(signupError);
+      return;
+    }
+    if (needsEmailConfirmation) {
+      setConfirmationSent(true);
+      return;
+    }
     router.push("/dashboard");
   };
+
+  if (confirmationSent) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-sm text-center"
+        >
+          <Check size={32} className="mx-auto text-bull" />
+          <h1 className="mt-4 font-display text-xl font-semibold text-text">Check your email</h1>
+          <p className="mt-2 font-body text-sm text-text-muted">
+            We sent a confirmation link to <span className="text-text">{email}</span>. Click it
+            to activate your account, then come back and log in.
+          </p>
+          <Link
+            href="/login"
+            className="mt-6 inline-block rounded-lg bg-accent px-5 py-2.5 font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02]"
+          >
+            Go to login
+          </Link>
+        </motion.div>
+      </main>
+    );
+  }
 
   return (
     <main className="grid min-h-screen grid-cols-1 lg:grid-cols-2">

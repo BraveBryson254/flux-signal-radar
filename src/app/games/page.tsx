@@ -44,8 +44,8 @@ export default function GamesPage() {
   const division = divisionForXp(xp);
   const challenge = dailyChallenge();
 
-  const awardXp = (xp: number) => {
-    const result = claimMission(`game-${Date.now()}`, xp, 10);
+  const awardXp = async (xp: number) => {
+    const result = await claimMission(`game-${Date.now()}`, xp, 10);
     const tid = `${Date.now()}`;
     setToasts((p) => [...p, { id: tid, xp, coins: 10, leveledUp: result.leveledUp, newLevel: result.newLevel }]);
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== tid)), 2400);

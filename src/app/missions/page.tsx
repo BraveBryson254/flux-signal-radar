@@ -27,9 +27,9 @@ export default function MissionsPage() {
     );
   }
 
-  const handleClaim = (mission: Mission) => {
+  const handleClaim = async (mission: Mission) => {
     if (user.claimedMissionIds.includes(mission.id)) return;
-    const result = claimMission(mission.id, mission.xp, 5);
+    const result = await claimMission(mission.id, mission.xp, 5);
     const toastId = `${mission.id}-${Date.now()}`;
     setToasts((prev) => [
       ...prev,

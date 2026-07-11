@@ -53,12 +53,12 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
     );
   }
 
-  const markComplete = (id: string, minutes: number) => {
+  const markComplete = async (id: string, minutes: number) => {
     if (completed.includes(id)) return;
     setCompleted((prev) => [...prev, id]);
     markLessonComplete(course.id, id);
     const xp = Math.round(minutes * 2);
-    const result = claimMission(`lesson-${id}-${nextId()}`, xp, 2);
+    const result = await claimMission(`lesson-${id}-${nextId()}`, xp, 2);
     const tid = `${id}-${nextId()}`;
     setToasts((p) => [...p, { id: tid, xp, coins: 2, leveledUp: result.leveledUp, newLevel: result.newLevel }]);
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== tid)), 2400);

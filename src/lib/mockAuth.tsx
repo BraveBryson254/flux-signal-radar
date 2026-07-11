@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * MOCK AUTH LAYER — replace with real Supabase Auth.
+ * REAL AUTH LAYER — backed by Supabase Auth + a `profiles` table.
  *
- * Simulates a logged-in user so every gated page is fully clickable
- * today. To go live: swap the provider internals for Supabase Auth
- * hooks, keeping the same Tier/User shape so no consuming component
- * needs to change.
+ * File path and export names (`useAuth`, `AuthProvider`, `MockUser`) are
+ * kept stable on purpose: 28 files import from this exact path, and
+ * renaming would touch every one of them for no functional benefit.
+ * Everything below this line is real now — no more localStorage mock.
  */
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "./supabaseClient";
 
 export type Tier = "free" | "basic" | "pro" | "elite";
 
@@ -19,7 +21,6 @@ export interface MockUser {
   name: string;
   tier: Tier;
   trialEndsAt: string | null;
-  // Gamification state — backend-ready, persisted in Supabase later.
   xp: number;
   level: number;
   coins: number;
@@ -27,98 +28,187 @@ export interface MockUser {
   claimedMissionIds: string[];
 }
 
+interface ProfileRow {
+  id: string;
+  email: string;
+  name: string;
+  tier: Tier;
+  xp: number;
+  level: number;
+  coins: number;
+  login_streak: number;
+  last_login_date: string;
+  claimed_mission_ids: string[];
+  trial_ends_at: string | null;
+}
+
+function rowToUser(row: ProfileRow): MockUser {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    tier: row.tier,
+    trialEndsAt: row.trial_ends_at,
+    xp: row.xp,
+    level: row.level,
+    coins: row.coins,
+    loginStreak: row.login_streak,
+    claimedMissionIds: row.claimed_mission_ids ?? [],
+  };
+}
+
 interface AuthContextValue {
   user: MockUser | null;
   isLoading: boolean;
-  login: (email: string) => void;
-  signup: (email: string, name: string) => void;
-  logout: () => void;
-  setTier: (tier: Tier) => void;
-  claimMission: (id: string, xp: number, coins?: number) => { leveledUp: boolean; newLevel: number };
+  authError: string | null;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  signup: (
+    email: string,
+    password: string,
+    name: string
+  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
+  logout: () => Promise<void>;
+  setTier: (tier: Tier) => Promise<void>;
+  claimMission: (id: string, xp: number, coins?: number) => Promise<{ leveledUp: boolean; newLevel: number }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "flux-signal-radar:mock-user";
+const XP_PER_LEVEL = 250;
 
-function seedUser(email: string, name: string): MockUser {
-  const trialEnd = new Date();
-  trialEnd.setDate(trialEnd.getDate() + 7);
+// Increments the daily login streak once per calendar day, based on the
+// previously stored last_login_date — resets to 1 if a day was missed.
+function computeStreakUpdate(lastLoginDate: string, currentStreak: number) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastLoginDate === today) return { login_streak: currentStreak, last_login_date: today };
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const wasYesterday = lastLoginDate === yesterday.toISOString().slice(0, 10);
   return {
-    id: "mock-user-1",
-    email,
-    name,
-    tier: "basic",
-    trialEndsAt: trialEnd.toISOString(),
-    xp: 1240,
-    level: 7,
-    coins: 380,
-    loginStreak: 4,
-    claimedMissionIds: [],
+    login_streak: wasYesterday ? currentStreak + 1 : 1,
+    last_login_date: today,
   };
-}
-
-function readStoredUser(): MockUser | null {
-  if (typeof window === "undefined") return null;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored) as MockUser;
-  } catch {
-    return null;
-  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Lazy initializer hydrates from storage once, without a set-in-effect.
   const [user, setUser] = useState<MockUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Intentional one-time hydration from localStorage on mount. This is
-    // the correct SSR-safe pattern (a lazy useState initializer would run
-    // on the server where window is undefined).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUser(readStoredUser());
-    setIsLoading(false);
+  const loadProfile = useCallback(async (userId: string) => {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    if (error || !data) {
+      setUser(null);
+      return;
+    }
+    const row = data as ProfileRow;
+    const streakUpdate = computeStreakUpdate(row.last_login_date, row.login_streak);
+    if (streakUpdate.last_login_date !== row.last_login_date) {
+      await supabase.from("profiles").update(streakUpdate).eq("id", userId);
+      setUser(rowToUser({ ...row, ...streakUpdate }));
+    } else {
+      setUser(rowToUser(row));
+    }
   }, []);
 
-  const persist = (u: MockUser | null) => {
-    setUser(u);
-    if (u) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    else window.localStorage.removeItem(STORAGE_KEY);
+  const handleSession = useCallback(
+    async (session: Session | null) => {
+      if (!session?.user) {
+        setUser(null);
+        return;
+      }
+      await loadProfile(session.user.id);
+    },
+    [loadProfile]
+  );
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      handleSession(data.session).finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [handleSession]);
+
+  const login = async (email: string, password: string) => {
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAuthError(error.message);
+      return { error: error.message };
+    }
+    return { error: null };
   };
 
-  const login = (email: string) => persist(seedUser(email, email.split("@")[0]));
-  const signup = (email: string, name: string) => persist(seedUser(email, name));
-  const logout = () => persist(null);
-  const setTier = (tier: Tier) => {
+  const signup = async (email: string, password: string, name: string) => {
+    setAuthError(null);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    if (error) {
+      setAuthError(error.message);
+      return { error: error.message, needsEmailConfirmation: false };
+    }
+    // If email confirmation is required (default Supabase setting), no
+    // session exists yet — the page should show a "check your email"
+    // message rather than redirecting into a logged-out dashboard.
+    const needsEmailConfirmation = !data.session;
+    return { error: null, needsEmailConfirmation };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const setTier = async (tier: Tier) => {
     if (!user) return;
-    persist({ ...user, tier });
+    const { error } = await supabase.from("profiles").update({ tier }).eq("id", user.id);
+    if (!error) setUser({ ...user, tier });
   };
 
-  const XP_PER_LEVEL = 250;
-
-  const claimMission = (id: string, xp: number, coins = 0) => {
+  const claimMission = async (id: string, xp: number, coins = 0) => {
     if (!user || user.claimedMissionIds.includes(id)) {
       return { leveledUp: false, newLevel: user?.level ?? 1 };
     }
     const newXp = user.xp + xp;
     const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
     const leveledUp = newLevel > user.level;
-    persist({
-      ...user,
-      xp: newXp,
-      level: newLevel,
-      coins: user.coins + coins,
-      claimedMissionIds: [...user.claimedMissionIds, id],
-    });
+    const newClaimed = [...user.claimedMissionIds, id];
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        xp: newXp,
+        level: newLevel,
+        coins: user.coins + coins,
+        claimed_mission_ids: newClaimed,
+      })
+      .eq("id", user.id);
+
+    if (!error) {
+      setUser({ ...user, xp: newXp, level: newLevel, coins: user.coins + coins, claimedMissionIds: newClaimed });
+    }
     return { leveledUp, newLevel };
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, signup, logout, setTier, claimMission }}
+      value={{ user, isLoading, authError, login, signup, logout, setTier, claimMission }}
     >
       {children}
     </AuthContext.Provider>

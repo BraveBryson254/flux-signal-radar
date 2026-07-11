@@ -26,9 +26,13 @@ export default function LoginPage() {
     }
 
     setSubmitting(true);
-    // MOCK — swap for real Supabase Auth sign-in call
-    await new Promise((r) => setTimeout(r, 600));
-    login(email);
+    const { error: loginError } = await login(email, password);
+    setSubmitting(false);
+
+    if (loginError) {
+      setError(loginError);
+      return;
+    }
     router.push("/dashboard");
   };
 
