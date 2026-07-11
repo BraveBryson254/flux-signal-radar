@@ -11,6 +11,17 @@ import { fadeUp, hoverLift } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess, tierById } from "@/lib/tiers";
 import { courses, courseCategories } from "@/lib/educationData";
+import { schools } from "@/lib/schoolsData";
+import AcademySearch from "@/components/AcademySearch";
+import * as Icons from "lucide-react";
+
+function SchoolIcon({ name, size = 18, className = "" }: { name: string; size?: number; className?: string }) {
+  const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.GraduationCap) as React.ComponentType<{
+    size?: number;
+    className?: string;
+  }>;
+  return <Cmp size={size} className={className} />;
+}
 
 export default function AcademyPage() {
   const { user } = useAuth();
@@ -59,8 +70,52 @@ export default function AcademyPage() {
             >
               Video center
             </Link>
+            <Link
+              href="/academy/reading-list"
+              className="rounded-lg border border-border px-4 py-2 font-body text-sm text-text transition-colors hover:border-accent"
+            >
+              Recommended reading
+            </Link>
+            <Link
+              href="/academy/research"
+              className="rounded-lg border border-border px-4 py-2 font-body text-sm text-text transition-colors hover:border-accent"
+            >
+              Research library
+            </Link>
+            <Link
+              href="/academy/progress"
+              className="rounded-lg border border-border px-4 py-2 font-body text-sm text-text transition-colors hover:border-accent"
+            >
+              My progress
+            </Link>
+          </div>
+
+          <div className="mt-6 max-w-lg">
+            <AcademySearch />
           </div>
         </Reveal>
+
+        {/* Schools */}
+        <section className="mt-10">
+          <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">SCHOOLS</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {schools.map((school) => (
+              <Link
+                key={school.id}
+                href={`/academy/schools/${school.id}`}
+                className="flex items-center gap-3 rounded-xl border border-border bg-panel p-4 transition-colors hover:border-accent"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-panel-raised">
+                  <SchoolIcon name={school.icon} size={18} className="text-accent" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-body text-sm font-semibold text-text">{school.name}</p>
+                  <p className="truncate font-mono text-[10px] text-text-faint">{school.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {/* Category filter */}
         <div className="mt-8 flex flex-wrap gap-2">

@@ -1,11 +1,12 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bookmark, List, Sun, Moon } from "lucide-react";
 import Header from "@/components/Header";
 import { books, sampleChapters } from "@/lib/educationData";
+import { markBookRead } from "@/lib/academyProgress";
 
 export default function ReaderPage({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
@@ -14,6 +15,10 @@ export default function ReaderPage({ params }: { params: Promise<{ bookId: strin
   const [bookmarked, setBookmarked] = useState(false);
   const [showToc, setShowToc] = useState(false);
   const [sepia, setSepia] = useState(false);
+
+  useEffect(() => {
+    if (book) markBookRead(book.id);
+  }, [book]);
 
   if (!book) {
     return (
