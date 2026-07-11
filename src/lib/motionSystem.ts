@@ -85,6 +85,28 @@ export const blurReveal: Variants = {
   },
 };
 
+/**
+ * 3D tilt reveal — cards rotate in from a slight forward tilt, like they
+ * are mounted on a plane tipping toward the viewer. Use inside an element
+ * with `perspective` set on its parent (see `perspective` helper below).
+ * GPU-friendly: transform + opacity only.
+ */
+export const tiltUp: Variants = {
+  hidden: { opacity: 0, rotateX: 12, y: 28, scale: 0.98 },
+  show: {
+    opacity: 1,
+    rotateX: 0,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.7, ease: ease.entrance },
+  },
+};
+
+// Apply to a wrapping element so children with tiltUp render in 3D space.
+export const perspective: { perspective: number } = {
+  perspective: 1000,
+};
+
 // ---- Stagger container ---------------------------------------------------
 
 export function staggerContainer(stagger = 0.06, delayChildren = 0): Variants {

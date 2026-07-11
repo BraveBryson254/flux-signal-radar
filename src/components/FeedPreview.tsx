@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { mockSignals } from "@/lib/mockData";
 import SignalCard from "./SignalCard";
+import { tiltUp, perspective } from "@/lib/motionSystem";
 
 export default function FeedPreview() {
   const preview = mockSignals.slice(0, 3);
@@ -28,14 +29,15 @@ export default function FeedPreview() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3" style={perspective}>
           {preview.map((signal, i) => (
             <motion.div
               key={signal.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              variants={tiltUp}
+              initial="hidden"
+              whileInView="show"
               viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.4, delay: i * 0.35 }}
+              transition={{ duration: 0.6, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
             >
               <SignalCard signal={signal} index={i} />
             </motion.div>

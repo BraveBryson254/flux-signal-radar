@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { tiltUp, perspective } from "@/lib/motionSystem";
 
 const stages = [
   { stage: "SCAN.01", title: "Session filter" },
@@ -45,14 +46,15 @@ export default function PipelineTeaser() {
             />
           </svg>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-4" style={perspective}>
             {stages.map((s, i) => (
               <motion.div
                 key={s.stage}
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                variants={tiltUp}
+                initial="hidden"
+                whileInView="show"
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: i * 0.15 }}
+                transition={{ duration: 0.6, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
                 className="relative"
               >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel">

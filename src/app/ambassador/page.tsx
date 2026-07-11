@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Copy, Check, Users, BadgeCheck, Activity, DollarSign } from "lucide-react";
+import { Copy, Check, Users, BadgeCheck, Activity, DollarSign, Clock, ImageDown } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Button from "@/components/ui/Button";
 import Leaderboard from "@/components/Leaderboard";
+import QrCode from "@/components/QrCode";
+import { generateShareCard, downloadDataUrl } from "@/lib/shareCard";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
@@ -19,6 +21,8 @@ import {
   ambassadorLeaderboard,
   ambassadorRanks,
   rankForReferrals,
+  referralFunnel,
+  activeCampaign,
 } from "@/lib/ambassadorData";
 
 function Icon({ name, size = 18, className = "" }: { name: string; size?: number; className?: string }) {
@@ -79,6 +83,24 @@ export default function AmbassadorPage() {
           </p>
         </Reveal>
 
+        {/* Active campaign */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-accent bg-panel-raised p-4 sm:flex-row sm:items-center"
+        >
+          <div>
+            <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-accent">
+              <Clock size={11} /> ACTIVE CAMPAIGN — ENDS IN {Math.floor(activeCampaign.endsInHours / 24)}D
+            </p>
+            <p className="mt-1 font-body text-sm font-semibold text-text">{activeCampaign.name}</p>
+            <p className="font-body text-sm text-text-muted">{activeCampaign.description}</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 font-mono text-xs font-semibold text-bg">
+            {activeCampaign.reward}
+          </span>
+        </motion.div>
+
         {/* Rank + progress */}
         <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-panel to-panel-raised p-6">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -112,20 +134,42 @@ export default function AmbassadorPage() {
           </div>
         </div>
 
-        {/* Referral link */}
-        <div className="mt-6 rounded-xl border border-border bg-panel p-5">
-          <p className="mb-2 font-mono text-[10px] tracking-widest text-text-faint">YOUR REFERRAL LINK</p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex-1 truncate rounded-lg border border-border bg-panel-raised px-3 py-2.5 font-mono text-sm text-text-muted">
-              {referralStats.link}
+        {/* Referral link + QR + share card */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
+          <div className="rounded-xl border border-border bg-panel p-5">
+            <p className="mb-2 font-mono text-[10px] tracking-widest text-text-faint">YOUR REFERRAL LINK</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex-1 truncate rounded-lg border border-border bg-panel-raised px-3 py-2.5 font-mono text-sm text-text-muted">
+                {referralStats.link}
+              </div>
+              <Button onClick={copy} className="shrink-0">
+                {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}
+              </Button>
             </div>
-            <Button onClick={copy} className="shrink-0">
-              {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}
-            </Button>
+            <p className="mt-2 font-mono text-[10px] text-text-faint">
+              Code: <span className="text-accent">{referralStats.code}</span>
+            </p>
+
+            <button
+              onClick={() => {
+                const url = generateShareCard({
+                  headline: `${current.label}`,
+                  subline: "Growing the Flux Signal Radar community",
+                  statLabel: "Verified referrals",
+                  statValue: String(referralStats.verified),
+                });
+                if (url) downloadDataUrl(url, "flux-ambassador-card.png");
+              }}
+              className="mt-4 flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 font-body text-xs text-text-muted transition-colors hover:border-accent hover:text-text"
+            >
+              <ImageDown size={13} /> Download share card
+            </button>
           </div>
-          <p className="mt-2 font-mono text-[10px] text-text-faint">
-            Code: <span className="text-accent">{referralStats.code}</span> · QR code and share buttons arrive with the backend.
-          </p>
+
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-panel p-5">
+            <QrCode value={referralStats.link} size={120} />
+            <span className="font-mono text-[9px] text-text-faint">Scan to join</span>
+          </div>
         </div>
 
         {/* Stats */}
@@ -135,6 +179,34 @@ export default function AmbassadorPage() {
           <StatCard icon={<Activity size={15} />} label="Active" value={referralStats.active} />
           <StatCard icon={<DollarSign size={15} />} label="Paying" value={referralStats.paying} />
         </Stagger>
+
+        {/* Conversion funnel */}
+        <div className="mt-6 rounded-xl border border-border bg-panel p-5">
+          <h3 className="mb-4 font-display text-sm font-semibold text-text">Referral conversion funnel</h3>
+          <div className="space-y-3">
+            {referralFunnel.map((stage, i) => {
+              const max = referralFunnel[0].count || 1;
+              const widthPct = (stage.count / max) * 100;
+              return (
+                <div key={stage.label}>
+                  <div className="mb-1 flex items-center justify-between font-mono text-xs">
+                    <span className="text-text">{stage.label}</span>
+                    <span className="text-text-muted">{stage.count}</span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-panel-raised">
+                    <motion.div
+                      className="h-full rounded-full bg-accent"
+                      initial={{ width: 0 }}
+                      whileInView={{ width: `${widthPct}%` }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: i * 0.08 }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Milestones */}

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { tiers } from "@/lib/tiers";
+import { perspective } from "@/lib/motionSystem";
 
 export default function PricingTeaser() {
   return (
@@ -16,18 +17,18 @@ export default function PricingTeaser() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" style={perspective}>
           {tiers.map((tier, i) => (
             <motion.div
               key={tier.id}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 16, rotateX: 10 }}
               whileInView={
                 tier.recommended
-                  ? { opacity: 1, y: -6, scale: 1.02 }
-                  : { opacity: 1, y: 0, scale: 1 }
+                  ? { opacity: 1, y: -6, scale: 1.02, rotateX: 0 }
+                  : { opacity: 1, y: 0, scale: 1, rotateX: 0 }
               }
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
               className="relative rounded-xl border bg-panel p-5"
               style={{
                 borderColor: tier.recommended ? "var(--color-accent)" : "var(--color-border)",

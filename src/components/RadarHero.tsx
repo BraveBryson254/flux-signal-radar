@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useVelocity, useSpring, useReducedMotion } from "framer-motion";
+import Parallax from "@/components/motion/Parallax";
 
 const SCAN_INTERVAL_SECONDS = 60;
 
@@ -28,11 +29,24 @@ export default function RadarHero() {
   const rings = [0.25, 0.5, 0.75, 1];
   const [secondsLeft, setSecondsLeft] = useState(SCAN_INTERVAL_SECONDS);
   const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
   });
   const badgeOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  // Geometric scroll-linked reactivity on the scope itself — the whole
+  // ring assembly slowly rotates and scales as the hero scrolls past,
+  // and the scan sweep momentarily speeds up with scroll velocity. This
+  // ties the brand's radar identity directly to the act of scrolling.
+  const scopeRotate = useTransform(scrollYProgress, [0, 1], [0, 24]);
+  const scopeScale = useTransform(scrollYProgress, [0, 0.5, 1], [1, 1.04, 0.96]);
+  const scrollVelocity = useVelocity(scrollYProgress);
+  const sweepBoost = useSpring(useTransform(scrollVelocity, [-2, 0, 2], [40, 0, -40]), {
+    stiffness: 120,
+    damping: 20,
+  });
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -54,8 +68,8 @@ export default function RadarHero() {
       />
 
       <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-16 md:flex-row md:items-center md:justify-between">
-        {/* Copy */}
-        <div className="max-w-xl text-center md:text-left">
+        {/* Copy — foreground layer, moves slightly faster than scroll */}
+        <Parallax speed={reduceMotion ? 0 : 0.15} className="max-w-xl text-center md:text-left">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,9 +127,10 @@ export default function RadarHero() {
               How scoring works
             </a>
           </motion.div>
-        </div>
+        </Parallax>
 
-        {/* Radar scope */}
+        {/* Radar scope — background layer, moves slower + reacts to scroll */}
+        <Parallax speed={reduceMotion ? 0 : 0.4} className="relative shrink-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -124,6 +139,17 @@ export default function RadarHero() {
           style={{ width: size, height: size }}
           aria-hidden="true"
         >
+          {/* Inner layer carries the scroll-linked rotate/scale, kept
+              separate from the entrance animation above so the two
+              transform sources don't fight. */}
+          <motion.div
+            style={{
+              width: size,
+              height: size,
+              rotate: reduceMotion ? 0 : scopeRotate,
+              scale: reduceMotion ? 1 : scopeScale,
+            }}
+          >
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
             <defs>
               <radialGradient id="scopeFade" cx="50%" cy="50%" r="50%">
@@ -153,6 +179,7 @@ export default function RadarHero() {
 
             {/* Rotating sweep, clipped to the scope circle */}
             <g clipPath="url(#scopeClip)">
+              <motion.g style={{ transformOrigin: `${size / 2}px ${size / 2}px`, rotate: reduceMotion ? 0 : sweepBoost }}>
               <motion.g
                 style={{ transformOrigin: `${size / 2}px ${size / 2}px` }}
                 animate={{ rotate: 360 }}
@@ -174,6 +201,7 @@ export default function RadarHero() {
                   strokeWidth={2}
                   opacity={0.5}
                 />
+              </motion.g>
               </motion.g>
             </g>
 
@@ -218,6 +246,7 @@ export default function RadarHero() {
 
             <circle cx={size / 2} cy={size / 2} r={3} fill="var(--color-accent)" />
           </svg>
+          </motion.div>
 
           <div className="absolute inset-0 flex items-end justify-center pb-4">
             <span className="rounded-full border border-border bg-panel/80 px-3 py-1 font-mono text-[10px] tracking-widest text-text-faint backdrop-blur">
@@ -225,6 +254,7 @@ export default function RadarHero() {
             </span>
           </div>
         </motion.div>
+        </Parallax>
       </div>
     </section>
   );

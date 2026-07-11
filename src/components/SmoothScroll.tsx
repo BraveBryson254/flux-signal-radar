@@ -18,11 +18,11 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     if (reduce) return; // native scroll, no momentum
 
     const lenis = new Lenis({
-      duration: 1.1, // glide length — higher = more inertia
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // expo-out
+      duration: 1.9, // heavier glide — noticeable drift after release
+      easing: (t) => 1 - Math.pow(1 - t, 4), // pronounced expo-out decel
       smoothWheel: true,
-      touchMultiplier: 1.6,
-      wheelMultiplier: 1,
+      touchMultiplier: 1.8,
+      wheelMultiplier: 1.15,
     });
 
     // Expose for scroll-locking UI (modals, mobile menu) to pause momentum.

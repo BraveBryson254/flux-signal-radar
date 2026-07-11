@@ -102,3 +102,36 @@ export function rankForReferrals(count: number): { current: AmbassadorRank; next
   const next = ambassadorRanks.find((r) => r.minReferrals > count) ?? null;
   return { current, next };
 }
+
+// ---- Referral conversion funnel ------------------------------------------
+
+export interface FunnelStage {
+  label: string;
+  count: number;
+}
+
+export const referralFunnel: FunnelStage[] = [
+  { label: "Link clicked", count: 22 },
+  { label: "Account created", count: 11 },
+  { label: "Email verified", count: 8 },
+  { label: "Profile completed", count: 6 },
+  { label: "Subscribed", count: 2 },
+];
+
+// ---- Campaigns -------------------------------------------------------------
+
+export interface AmbassadorCampaign {
+  id: string;
+  name: string;
+  description: string;
+  endsInHours: number;
+  reward: string;
+}
+
+export const activeCampaign: AmbassadorCampaign = {
+  id: "camp-gold-month",
+  name: "Gold Trading Month",
+  description: "Referrals who subscribe this month earn you double coins.",
+  endsInHours: 312,
+  reward: "2x coin rewards",
+};
