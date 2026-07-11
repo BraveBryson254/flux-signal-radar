@@ -92,13 +92,13 @@ export const blurReveal: Variants = {
  * GPU-friendly: transform + opacity only.
  */
 export const tiltUp: Variants = {
-  hidden: { opacity: 0, rotateX: 12, y: 28, scale: 0.98 },
+  hidden: { opacity: 0, rotateX: 24, y: 40, scale: 0.92 },
   show: {
     opacity: 1,
     rotateX: 0,
     y: 0,
     scale: 1,
-    transition: { duration: 0.7, ease: ease.entrance },
+    transition: { duration: 0.85, ease: ease.entrance },
   },
 };
 
