@@ -4,16 +4,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Lock, Check, X, Trophy, RotateCcw, ArrowLeft } from "lucide-react";
+import { Lock, Check, X, Trophy, RotateCcw, ArrowLeft, Info } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Button from "@/components/ui/Button";
+import Leaderboard from "@/components/Leaderboard";
 import XpToast, { ToastItem } from "@/components/XpToast";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp, hoverLift } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess, tierById } from "@/lib/tiers";
-import { games, patternQuestions } from "@/lib/gamesData";
+import { games, patternQuestions, arenaLeaderboard } from "@/lib/gamesData";
+import { getBestScore } from "@/lib/arenaScores";
+import MarketDirectionGame from "@/components/games/MarketDirectionGame";
+import LiquidityHuntGame from "@/components/games/LiquidityHuntGame";
+import RiskSimulatorGame from "@/components/games/RiskSimulatorGame";
+import ReplayModeGame from "@/components/games/ReplayModeGame";
+import SpeedChallengeGame from "@/components/games/SpeedChallengeGame";
 
 function Icon({ name, size = 20, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Gamepad2) as React.ComponentType<{
@@ -27,7 +34,7 @@ export default function GamesPage() {
   const { user, claimMission } = useAuth();
   const router = useRouter();
   const userTier = user?.tier ?? "free";
-  const [playing, setPlaying] = useState(false);
+  const [activeGame, setActiveGame] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const awardXp = (xp: number) => {
@@ -37,18 +44,25 @@ export default function GamesPage() {
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== tid)), 2400);
   };
 
-  if (playing) {
+  if (activeGame) {
+    const game = games.find((g) => g.id === activeGame);
     return (
       <main>
         <Header />
         <div className="mx-auto max-w-2xl px-6 pt-28 pb-20">
           <button
-            onClick={() => setPlaying(false)}
+            onClick={() => setActiveGame(null)}
             className="mb-6 inline-flex items-center gap-1.5 font-mono text-xs text-text-muted hover:text-text"
           >
             <ArrowLeft size={13} /> Arena
           </button>
-          <PatternGame onFinish={(score) => awardXp(score * 10)} />
+          <h1 className="mb-4 font-display text-xl font-semibold text-text">{game?.name}</h1>
+          {activeGame === "g-pattern" && <PatternGame onFinish={(score) => awardXp(score * 10)} />}
+          {activeGame === "g-direction" && <MarketDirectionGame onFinish={awardXp} />}
+          {activeGame === "g-liquidity" && <LiquidityHuntGame onFinish={awardXp} />}
+          {activeGame === "g-risk" && <RiskSimulatorGame onFinish={awardXp} />}
+          {activeGame === "g-replay" && <ReplayModeGame onFinish={awardXp} />}
+          {activeGame === "g-speed" && <SpeedChallengeGame onFinish={awardXp} />}
         </div>
         <Footer />
         <XpToast toasts={toasts} />
@@ -59,7 +73,7 @@ export default function GamesPage() {
   return (
     <main>
       <Header />
-      <div className="mx-auto max-w-5xl px-6 pt-28 pb-20">
+      <div className="mx-auto max-w-6xl px-6 pt-28 pb-20">
         <Reveal>
           <span className="font-mono text-xs tracking-widest text-accent">FLUX ARENA</span>
           <h1 className="mt-2 font-display text-3xl font-semibold text-text md:text-4xl">
@@ -67,44 +81,75 @@ export default function GamesPage() {
           </h1>
           <p className="mt-3 max-w-xl font-body text-text-muted">
             Sharpen your eye and earn XP. Practice pattern recognition, liquidity
-            reads, and risk discipline — no real money at stake.
+            reads, risk discipline, and speed — no real money at stake.
           </p>
         </Reveal>
 
-        <Stagger className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {games.map((game) => {
-            const unlocked = hasAccess(userTier, game.minTier);
-            return (
-              <StaggerItem key={game.id} variants={fadeUp}>
-                <motion.div {...hoverLift} className="flex h-full flex-col rounded-xl border border-border bg-panel p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-panel-raised">
-                      <Icon name={game.icon} size={20} className="text-accent" />
+        {/* Prize model disclosure — platform-funded points leaderboard only.
+            No deposits, wagers, or user-funded prize pools exist here. */}
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-panel/50 p-3">
+          <Info size={14} className="mt-0.5 shrink-0 text-text-faint" />
+          <p className="font-mono text-[10px] leading-relaxed text-text-faint">
+            Arena points and leaderboard rankings are for XP and recognition only.
+            There is no deposit, withdrawal, or cash-wagering feature — any future
+            prize would be funded by Flux directly, never pooled from user funds.
+          </p>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr]">
+          {/* Game grid */}
+          <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {games.map((game) => {
+              const unlocked = hasAccess(userTier, game.minTier);
+              const best = getBestScore(game.id);
+              return (
+                <StaggerItem key={game.id} variants={fadeUp}>
+                  <motion.div {...hoverLift} className="flex h-full flex-col rounded-xl border border-border bg-panel p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-panel-raised">
+                        <Icon name={game.icon} size={20} className="text-accent" />
+                      </div>
+                      <span className="font-mono text-[10px] text-accent">+{game.xpReward} XP</span>
                     </div>
-                    <span className="font-mono text-[10px] text-accent">+{game.xpReward} XP</span>
-                  </div>
-                  <h3 className="mt-3 font-display text-base font-semibold text-text">{game.name}</h3>
-                  <p className="mt-1 flex-1 font-body text-sm text-text-muted">{game.description}</p>
-                  <div className="mt-4">
-                    {!unlocked ? (
-                      <Button variant="secondary" size="sm" onClick={() => router.push("/pricing")} className="w-full">
-                        <Lock size={12} /> {tierById(game.minTier).name}
-                      </Button>
-                    ) : game.playable ? (
-                      <Button size="sm" onClick={() => setPlaying(true)} className="w-full">
-                        Play now
-                      </Button>
-                    ) : (
-                      <Button variant="secondary" size="sm" disabled className="w-full opacity-60">
-                        Coming soon
-                      </Button>
+                    <h3 className="mt-3 font-display text-base font-semibold text-text">{game.name}</h3>
+                    <p className="mt-1 flex-1 font-body text-sm text-text-muted">{game.description}</p>
+                    {best > 0 && (
+                      <p className="mt-2 font-mono text-[10px] text-text-faint">Personal best: {best}</p>
                     )}
-                  </div>
-                </motion.div>
-              </StaggerItem>
-            );
-          })}
-        </Stagger>
+                    <div className="mt-4">
+                      {!unlocked ? (
+                        <Button variant="secondary" size="sm" onClick={() => router.push("/pricing")} className="w-full">
+                          <Lock size={12} /> {tierById(game.minTier).name}
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={() => setActiveGame(game.id)} className="w-full">
+                          Play now
+                        </Button>
+                      )}
+                    </div>
+                  </motion.div>
+                </StaggerItem>
+              );
+            })}
+          </Stagger>
+
+          {/* Arena leaderboard */}
+          <div className="rounded-xl border border-border bg-panel p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-display text-sm font-semibold text-text">Arena leaderboard</h3>
+              <span className="font-mono text-xs text-text-faint">This season</span>
+            </div>
+            <Leaderboard
+              rows={arenaLeaderboard.map((e) => ({
+                rank: e.rank,
+                name: e.name,
+                region: e.region,
+                value: `${e.points.toLocaleString()} pts`,
+                you: e.you,
+              }))}
+            />
+          </div>
+        </div>
       </div>
       <Footer />
       <XpToast toasts={toasts} />
