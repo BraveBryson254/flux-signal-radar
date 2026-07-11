@@ -1,4 +1,4 @@
-import { Tier } from "./mockAuth";
+export type Tier = "free" | "basic" | "pro" | "elite";
 
 export interface TierDefinition {
   id: Tier;
@@ -87,4 +87,27 @@ export function hasAccess(userTier: Tier, requiredTier: Tier): boolean {
 
 export function tierById(id: Tier): TierDefinition {
   return tiers.find((t) => t.id === id)!;
+}
+
+/** The tier level granted for free during a trial period. */
+export const TRIAL_TIER: Tier = "pro";
+
+export function isTrialActive(trialEndsAt: string | null): boolean {
+  if (!trialEndsAt) return false;
+  return new Date(trialEndsAt).getTime() > Date.now();
+}
+
+/** Effective tier for gating: the better of what they've paid for and
+ * what an active trial grants. Once the trial expires this collapses
+ * back to the paid tier automatically — no separate "revert" step needed. */
+export function effectiveTier(paidTier: Tier, trialEndsAt: string | null): Tier {
+  if (!isTrialActive(trialEndsAt)) return paidTier;
+  return tierRank[TRIAL_TIER] > tierRank[paidTier] ? TRIAL_TIER : paidTier;
+}
+
+export function trialTimeLeft(trialEndsAt: string | null): { days: number; hours: number } | null {
+  if (!isTrialActive(trialEndsAt)) return null;
+  const ms = new Date(trialEndsAt!).getTime() - Date.now();
+  const totalHours = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+  return { days: Math.floor(totalHours / 24), hours: totalHours % 24 };
 }

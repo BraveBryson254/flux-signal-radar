@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
-import { tierById } from "@/lib/tiers";
+import { tierById, isTrialActive } from "@/lib/tiers";
 import { earnedTitles, activeTitle } from "@/lib/socialData";
 import { achievements } from "@/lib/ecosystemData";
 
@@ -64,7 +64,8 @@ export default function ProfilePage() {
                     <span className="font-mono text-[11px] text-accent">{title.label}</span>
                   </span>
                   <span className="rounded-full bg-panel-raised px-2.5 py-1 font-mono text-[11px] text-text-muted">
-                    {tierById(user.tier).name} · Level {user.level}
+                    {tierById(user.tier).name}
+                    {isTrialActive(user.trialEndsAt) ? " (Trial)" : ""} · Level {user.level}
                   </span>
                 </div>
               </div>

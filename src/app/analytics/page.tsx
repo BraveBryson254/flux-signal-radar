@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
@@ -10,19 +10,32 @@ import { MetricCard, ScoreRing, Panel } from "@/components/AnalyticsPrimitives";
 import EquityCurve from "@/components/EquityCurve";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess } from "@/lib/tiers";
-import { journalEntries, computeAnalytics } from "@/lib/performanceData";
+import { JournalEntry, computeAnalytics } from "@/lib/performanceData";
+import { fetchJournalEntries } from "@/lib/journalService";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 
 export default function AnalyticsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEntriesLoading(true);
+    fetchJournalEntries(user.id).then((data) => {
+      setEntries(data);
+      setEntriesLoading(false);
+    });
+  }, [user]);
+
+  if (isLoading || !user || entriesLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>
@@ -30,8 +43,33 @@ export default function AnalyticsPage() {
     );
   }
 
-  const a = computeAnalytics(journalEntries);
+  const a = computeAnalytics(entries);
   const canSeeAdvanced = hasAccess(user.tier, "pro");
+
+  if (entries.length === 0) {
+    return (
+      <main>
+        <Header />
+        <div className="mx-auto max-w-5xl px-6 pt-28 pb-20">
+          <Reveal>
+            <span className="font-mono text-xs tracking-widest text-accent">PERFORMANCE</span>
+            <h1 className="mt-2 font-display text-2xl font-semibold text-text md:text-3xl">
+              Analytics
+            </h1>
+          </Reveal>
+          <div className="mt-8 rounded-xl border border-dashed border-border py-16 text-center">
+            <p className="font-body text-sm text-text-muted">
+              Log a few trades in your journal to see analytics here.
+            </p>
+            <Link href="/journal" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">
+              Go to journal →
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -108,8 +146,8 @@ export default function AnalyticsPage() {
           {canSeeAdvanced ? (
             <Panel title="Advanced insights">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <MiniStat label="Best trade" value={`+${Math.max(...journalEntries.map((e) => e.rMultiple))}R`} />
-                <MiniStat label="Worst trade" value={`${Math.min(...journalEntries.map((e) => e.rMultiple))}R`} />
+                <MiniStat label="Best trade" value={`+${Math.max(...entries.map((e) => e.rMultiple))}R`} />
+                <MiniStat label="Worst trade" value={`${Math.min(...entries.map((e) => e.rMultiple))}R`} />
                 <MiniStat label="Avg R / trade" value={`${a.avgR}R`} />
                 <MiniStat label="Wins / losses" value={`${a.wins} / ${a.losses}`} />
               </div>

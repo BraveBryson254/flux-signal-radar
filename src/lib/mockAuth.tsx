@@ -12,14 +12,20 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabaseClient";
+import { effectiveTier, type Tier } from "./tiers";
 
-export type Tier = "free" | "basic" | "pro" | "elite";
+export type { Tier };
 
 export interface MockUser {
   id: string;
   email: string;
   name: string;
+  /** Effective tier used for all feature gating — the better of paidTier
+   * and any active trial. Every existing hasAccess() call site keeps
+   * working unchanged, since this is what "tier" has always meant here. */
   tier: Tier;
+  /** The tier actually paid for, independent of trial status. */
+  paidTier: Tier;
   trialEndsAt: string | null;
   xp: number;
   level: number;
@@ -47,7 +53,8 @@ function rowToUser(row: ProfileRow): MockUser {
     id: row.id,
     email: row.email,
     name: row.name,
-    tier: row.tier,
+    tier: effectiveTier(row.tier, row.trial_ends_at),
+    paidTier: row.tier,
     trialEndsAt: row.trial_ends_at,
     xp: row.xp,
     level: row.level,
@@ -178,7 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setTier = async (tier: Tier) => {
     if (!user) return;
     const { error } = await supabase.from("profiles").update({ tier }).eq("id", user.id);
-    if (!error) setUser({ ...user, tier });
+    if (!error) {
+      setUser({ ...user, paidTier: tier, tier: effectiveTier(tier, user.trialEndsAt) });
+    }
   };
 
   const claimMission = async (id: string, xp: number, coins = 0) => {

@@ -4,8 +4,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useAuth, Tier } from "@/lib/mockAuth";
-import { tiers, hasAccess, tierById } from "@/lib/tiers";
+import { useAuth } from "@/lib/mockAuth";
+import { hasAccess, tierById, trialTimeLeft, isTrialActive } from "@/lib/tiers";
+import { Clock } from "lucide-react";
 import {
   WelcomeWidget,
   DailySignalWidget,
@@ -27,7 +28,7 @@ import { NextLevelWidget } from "@/components/widgets/NextLevelWidget";
 import { TraderJourneyWidget } from "@/components/widgets/TraderJourneyWidget";
 
 export default function DashboardPage() {
-  const { user, isLoading, setTier, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -67,28 +68,27 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Tier preview switcher */}
-        <div className="mb-8 rounded-lg border border-dashed border-border bg-panel/50 p-4">
-          <p className="mb-2 font-mono text-[10px] tracking-widest text-text-faint">
-            PREVIEW MODE — SEE HOW THE DASHBOARD GROWS PER TIER
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {tiers.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTier(t.id as Tier)}
-                className="rounded-full border px-3 py-1.5 font-mono text-xs transition-colors"
-                style={{
-                  borderColor: user.tier === t.id ? "var(--color-accent)" : "var(--color-border)",
-                  color: user.tier === t.id ? "var(--color-accent)" : "var(--color-text-muted)",
-                  backgroundColor: user.tier === t.id ? "rgba(157,78,221,0.1)" : "transparent",
-                }}
-              >
-                {t.name} {t.price > 0 ? `$${t.price}` : ""}
-              </button>
-            ))}
+        {/* Trial status — access during the trial is real (backed by the
+            database), never a manual self-upgrade. Once the countdown
+            hits zero, gating automatically reverts to the paid tier. */}
+        {isTrialActive(user.trialEndsAt) && (
+          <div className="mb-8 flex items-center justify-between gap-3 rounded-lg border border-accent bg-panel-raised px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-accent" />
+              <p className="font-body text-sm text-text">
+                Free trial active — Pro features unlocked
+              </p>
+            </div>
+            {(() => {
+              const left = trialTimeLeft(user.trialEndsAt);
+              return (
+                <span className="font-mono text-xs text-accent">
+                  {left ? `${left.days}d ${left.hours}h left` : ""}
+                </span>
+              );
+            })()}
           </div>
-        </div>
+        )}
 
         {/* Widget grid — composes based on tier */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

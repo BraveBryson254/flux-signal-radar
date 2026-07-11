@@ -10,8 +10,8 @@ import Footer from "@/components/Footer";
 import { Reveal } from "@/components/motion/Motion";
 import { modal } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
+import { fetchJournalEntries, createJournalEntry } from "@/lib/journalService";
 import {
-  journalEntries as seedEntries,
   emotionLabels,
   JournalEntry,
   Emotion,
@@ -28,14 +28,25 @@ const outcomeColor: Record<TradeOutcome, string> = {
 export default function JournalPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [entries, setEntries] = useState<JournalEntry[]>(seedEntries);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEntriesLoading(true);
+    fetchJournalEntries(user.id).then((data) => {
+      setEntries(data);
+      setEntriesLoading(false);
+    });
+  }, [user]);
+
+  if (isLoading || !user || entriesLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>
@@ -65,6 +76,13 @@ export default function JournalPage() {
           </button>
         </div>
 
+        {entries.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border py-16 text-center">
+            <p className="font-body text-sm text-text-muted">
+              No trades logged yet — click &quot;Log trade&quot; to add your first entry.
+            </p>
+          </div>
+        ) : (
         <div className="space-y-3">
           {entries.map((entry, i) => {
             const long = entry.direction === "long";
@@ -135,6 +153,7 @@ export default function JournalPage() {
             );
           })}
         </div>
+        )}
       </div>
       <Footer />
 
@@ -142,8 +161,10 @@ export default function JournalPage() {
         {showForm && (
           <NewTradeModal
             onClose={() => setShowForm(false)}
-            onSave={(entry) => {
-              setEntries((prev) => [entry, ...prev]);
+            onSave={async (entry) => {
+              if (!user) return;
+              const saved = await createJournalEntry(user.id, entry);
+              if (saved) setEntries((prev) => [saved, ...prev]);
               setShowForm(false);
             }}
           />
@@ -158,7 +179,7 @@ function NewTradeModal({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (e: JournalEntry) => void;
+  onSave: (e: Omit<JournalEntry, "id">) => Promise<void>;
 }) {
   const [instrument, setInstrument] = useState("XAUUSD");
   const [direction, setDirection] = useState<TradeDirection>("long");
@@ -166,11 +187,12 @@ function NewTradeModal({
   const [emotion, setEmotion] = useState<Emotion>("calm");
   const [strategy, setStrategy] = useState("SMC");
   const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const r = parseFloat(rMultiple) || 0;
-    onSave({
-      id: `j-${Date.now()}`,
+    setSaving(true);
+    await onSave({
       date: new Date().toISOString().slice(0, 10),
       instrument,
       direction,
@@ -180,6 +202,7 @@ function NewTradeModal({
       strategy,
       notes: notes || undefined,
     });
+    setSaving(false);
   };
 
   return (
@@ -284,9 +307,10 @@ function NewTradeModal({
 
           <button
             onClick={handleSave}
-            className="w-full rounded-lg bg-accent py-2.5 font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02]"
+            disabled={saving}
+            className="w-full rounded-lg bg-accent py-2.5 font-body text-sm font-semibold text-bg transition-transform hover:scale-[1.02] disabled:opacity-60"
           >
-            Save entry
+            {saving ? "Saving..." : "Save entry"}
           </button>
         </div>
       </motion.div>
