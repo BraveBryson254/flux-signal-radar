@@ -5,6 +5,7 @@ import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Signal } from "@/lib/types";
 import { strategies, sessionMeta } from "@/lib/mockData";
 import Sparkline from "./Sparkline";
+import TradeRationaleCard from "./TradeRationaleCard";
 
 function ConfluenceGauge({ value, direction }: { value: number; direction: Signal["direction"] }) {
   const radius = 26;
@@ -92,6 +93,11 @@ export default function SignalCard({ signal, index }: { signal: Signal; index: n
           <p className="text-text-faint">Target</p>
           <p className="mt-0.5 text-bull">{signal.target}</p>
         </div>
+      </div>
+
+      {/* AI trade rationale */}
+      <div className="mt-3">
+        <TradeRationaleCard signal={signal} />
       </div>
 
       {/* Strategy tags */}
