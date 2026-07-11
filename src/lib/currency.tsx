@@ -39,6 +39,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as Currency | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored && RATES[stored]) setCurrencyState(stored);
   }, []);
 

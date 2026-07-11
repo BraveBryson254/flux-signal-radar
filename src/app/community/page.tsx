@@ -47,7 +47,7 @@ export default function CommunityPage() {
         </Reveal>
 
         {/* Milestones */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {communityMilestones.map((m, i) => (
             <motion.div
               key={m.label}

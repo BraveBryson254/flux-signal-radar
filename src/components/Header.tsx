@@ -19,6 +19,7 @@ const appLinks = [
   { href: "/academy", label: "Academy" },
   { href: "/games", label: "Arena" },
   { href: "/community", label: "Community" },
+  { href: "/ambassador", label: "Ambassador" },
   { href: "/coach", label: "Coach" },
 ];
 
@@ -30,8 +31,14 @@ export default function Header() {
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
+    // Pause momentum scroll while the mobile menu is open so it can't
+    // scroll behind the overlay, then resume.
+    const lenis = (window as unknown as { __lenis?: { stop: () => void; start: () => void } }).__lenis;
+    if (menuOpen) lenis?.stop();
+    else lenis?.start();
     return () => {
       document.body.style.overflow = "";
+      lenis?.start();
     };
   }, [menuOpen]);
 

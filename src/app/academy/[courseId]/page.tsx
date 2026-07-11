@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -26,8 +26,11 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const course = courses.find((c) => c.id === courseId);
+  const idCounter = useRef(0);
+  const nextId = () => `id-${idCounter.current++}`;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (course) setCompleted(course.lessons.filter((l) => l.done).map((l) => l.id));
   }, [course]);
 
@@ -49,8 +52,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
     if (completed.includes(id)) return;
     setCompleted((prev) => [...prev, id]);
     const xp = Math.round(minutes * 2);
-    const result = claimMission(`lesson-${id}-${Date.now()}`, xp, 2);
-    const tid = `${id}-${Date.now()}`;
+    const result = claimMission(`lesson-${id}-${nextId()}`, xp, 2);
+    const tid = `${id}-${nextId()}`;
     setToasts((p) => [...p, { id: tid, xp, coins: 2, leveledUp: result.leveledUp, newLevel: result.newLevel }]);
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== tid)), 2400);
   };

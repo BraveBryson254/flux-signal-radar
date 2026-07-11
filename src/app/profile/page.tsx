@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import { Flame, Coins, Share2 } from "lucide-react";
 import Header from "@/components/Header";

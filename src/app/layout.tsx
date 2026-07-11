@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ParticleField from "@/components/ParticleField";
+import SmoothScroll from "@/components/SmoothScroll";
 import { AuthProvider } from "@/lib/mockAuth";
 import { CurrencyProvider } from "@/lib/currency";
 
@@ -41,7 +42,9 @@ export default function RootLayout({
       >
         <ParticleField />
         <AuthProvider>
-          <CurrencyProvider>{children}</CurrencyProvider>
+          <CurrencyProvider>
+            <SmoothScroll>{children}</SmoothScroll>
+          </CurrencyProvider>
         </AuthProvider>
       </body>
     </html>

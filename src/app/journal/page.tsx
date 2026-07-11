@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, ArrowUpRight, ArrowDownRight, X } from "lucide-react";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Reveal } from "@/components/motion/Motion";
@@ -52,6 +53,9 @@ export default function JournalPage() {
             <h1 className="mt-2 font-display text-2xl font-semibold text-text md:text-3xl">
               Trading Journal
             </h1>
+            <Link href="/analytics" className="mt-2 inline-block font-mono text-xs text-accent hover:underline">
+              View analytics →
+            </Link>
           </Reveal>
           <button
             onClick={() => setShowForm(true)}

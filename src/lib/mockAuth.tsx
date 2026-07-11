@@ -58,19 +58,28 @@ function seedUser(email: string, name: string): MockUser {
   };
 }
 
+function readStoredUser(): MockUser | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as MockUser;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Lazy initializer hydrates from storage once, without a set-in-effect.
   const [user, setUser] = useState<MockUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        // ignore corrupt storage
-      }
-    }
+    // Intentional one-time hydration from localStorage on mount. This is
+    // the correct SSR-safe pattern (a lazy useState initializer would run
+    // on the server where window is undefined).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUser(readStoredUser());
     setIsLoading(false);
   }, []);
 

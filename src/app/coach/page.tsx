@@ -23,6 +23,8 @@ export default function CoachPage() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const idCounter = useRef(0);
+  const nextId = () => `msg-${idCounter.current++}`;
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
@@ -42,14 +44,14 @@ export default function CoachPage() {
 
   const send = (text: string) => {
     if (!text.trim()) return;
-    const userMsg: CoachMessage = { id: `u-${Date.now()}`, role: "user", text };
+    const userMsg: CoachMessage = { id: `u-${nextId()}`, role: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        { id: `c-${Date.now()}`, role: "coach", text: mockCoachReply(text) },
+        { id: `c-${nextId()}`, role: "coach", text: mockCoachReply(text) },
       ]);
       setTyping(false);
     }, 900);

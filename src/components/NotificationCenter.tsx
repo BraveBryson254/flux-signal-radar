@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import * as Icons from "lucide-react";
 import { Bell } from "lucide-react";
 import { notifications as seed } from "@/lib/notificationData";
@@ -56,7 +57,7 @@ export default function NotificationCenter() {
                 )}
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {items.map((n) => (
+                {items.slice(0, 5).map((n) => (
                   <div
                     key={n.id}
                     className="flex gap-3 border-b border-border px-4 py-3 last:border-0"
@@ -74,6 +75,13 @@ export default function NotificationCenter() {
                   </div>
                 ))}
               </div>
+              <Link
+                href="/notifications"
+                onClick={() => setOpen(false)}
+                className="block border-t border-border px-4 py-3 text-center font-mono text-xs text-accent hover:underline"
+              >
+                View all notifications
+              </Link>
             </motion.div>
           </>
         )}
