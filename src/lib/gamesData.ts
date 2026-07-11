@@ -17,6 +17,7 @@ export interface GameCard {
 }
 
 export const games: GameCard[] = [
+  { id: "g-ninja", name: "Candlestick Ninja", description: "Slice only the matching candles before they fall. Reflex training.", icon: "Swords", minTier: "free", playable: true, xpReward: 45 },
   { id: "g-pattern", name: "Pattern Recognition", description: "Identify the setup from a described chart scenario.", icon: "ScanSearch", minTier: "free", playable: true, xpReward: 50 },
   { id: "g-direction", name: "Market Direction Challenge", description: "Predict the next tick on a live-moving chart. Streaks pay.", icon: "TrendingUp", minTier: "free", playable: true, xpReward: 40 },
   { id: "g-liquidity", name: "Liquidity Hunt", description: "Click the level most likely to get swept first.", icon: "Crosshair", minTier: "basic", playable: true, xpReward: 60 },

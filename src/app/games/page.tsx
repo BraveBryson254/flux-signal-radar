@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Lock, Check, X, Trophy, RotateCcw, ArrowLeft, Info } from "lucide-react";
+import { Lock, Check, X, Trophy, RotateCcw, ArrowLeft, Info, Flame, Coins, Zap } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Button from "@/components/ui/Button";
@@ -16,6 +16,8 @@ import { useAuth } from "@/lib/mockAuth";
 import { hasAccess, tierById } from "@/lib/tiers";
 import { games, patternQuestions, arenaLeaderboard } from "@/lib/gamesData";
 import { getBestScore } from "@/lib/arenaScores";
+import { rankForXp, divisionForXp, leagueDivisions, currentSeason, dailyChallenge } from "@/lib/arenaProgression";
+import CandlestickNinjaGame from "@/components/games/CandlestickNinjaGame";
 import MarketDirectionGame from "@/components/games/MarketDirectionGame";
 import LiquidityHuntGame from "@/components/games/LiquidityHuntGame";
 import RiskSimulatorGame from "@/components/games/RiskSimulatorGame";
@@ -37,11 +39,21 @@ export default function GamesPage() {
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const xp = user?.xp ?? 0;
+  const { current: rank, next: nextRank, progress: rankProgress } = rankForXp(xp);
+  const division = divisionForXp(xp);
+  const challenge = dailyChallenge();
+
   const awardXp = (xp: number) => {
     const result = claimMission(`game-${Date.now()}`, xp, 10);
     const tid = `${Date.now()}`;
     setToasts((p) => [...p, { id: tid, xp, coins: 10, leveledUp: result.leveledUp, newLevel: result.newLevel }]);
     setTimeout(() => setToasts((p) => p.filter((t) => t.id !== tid)), 2400);
+  };
+
+  const playGame = (id: string) => {
+    if (activeGame) return;
+    setActiveGame(id);
   };
 
   if (activeGame) {
@@ -57,6 +69,7 @@ export default function GamesPage() {
             <ArrowLeft size={13} /> Arena
           </button>
           <h1 className="mb-4 font-display text-xl font-semibold text-text">{game?.name}</h1>
+          {activeGame === "g-ninja" && <CandlestickNinjaGame onFinish={awardXp} />}
           {activeGame === "g-pattern" && <PatternGame onFinish={(score) => awardXp(score * 10)} />}
           {activeGame === "g-direction" && <MarketDirectionGame onFinish={awardXp} />}
           {activeGame === "g-liquidity" && <LiquidityHuntGame onFinish={awardXp} />}
@@ -74,70 +87,163 @@ export default function GamesPage() {
     <main>
       <Header />
       <div className="mx-auto max-w-6xl px-6 pt-28 pb-20">
+        {/* Arena hero */}
         <Reveal>
-          <span className="font-mono text-xs tracking-widest text-accent">FLUX ARENA</span>
-          <h1 className="mt-2 font-display text-3xl font-semibold text-text md:text-4xl">
-            Trading Games
-          </h1>
-          <p className="mt-3 max-w-xl font-body text-text-muted">
-            Sharpen your eye and earn XP. Practice pattern recognition, liquidity
-            reads, risk discipline, and speed — no real money at stake.
-          </p>
+          <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-panel to-panel-raised p-6 md:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <span className="font-mono text-xs tracking-widest text-accent">🏟 FLUX TRADING ARENA</span>
+                <h1 className="mt-2 font-display text-3xl font-semibold text-text md:text-4xl">
+                  Train like a professional trader.
+                </h1>
+                <p className="mt-2 max-w-lg font-body text-text-muted">
+                  Become faster. Become sharper. Become disciplined. Earn XP, climb the
+                  ranks, and master the markets — no real money at stake.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-accent bg-panel-raised px-4 py-3">
+                <Icon name={rank.icon} size={22} className="text-accent" />
+                <div>
+                  <p className="font-display text-sm font-semibold text-text">{rank.label}</p>
+                  <p className="font-mono text-[10px] text-text-faint">{xp.toLocaleString()} XP</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Rank progress */}
+            {nextRank && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between font-mono text-[11px] text-text-faint">
+                  <span>Progress to {nextRank.label}</span>
+                  <span>{Math.round(rankProgress)}%</span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-bg/40">
+                  <motion.div
+                    className="h-full rounded-full bg-accent"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${rankProgress}%` }}
+                    transition={{ duration: 0.7 }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Quick stats */}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ArenaStat icon={<Flame size={13} className="text-accent" />} label="Streak" value={`${user?.loginStreak ?? 0}d`} />
+              <ArenaStat icon={<Coins size={13} className="text-bull" />} label="Arena Coins" value={String(user?.coins ?? 0)} />
+              <ArenaStat
+                icon={<span className="h-2.5 w-2.5 rounded-full" style={{ background: division.color }} />}
+                label="Division"
+                value={division.label}
+              />
+              <ArenaStat icon={<Zap size={13} className="text-accent" />} label="Season" value={`${currentSeason.endsInDays}d left`} />
+            </div>
+          </div>
         </Reveal>
 
-        {/* Prize model disclosure — platform-funded points leaderboard only.
-            No deposits, wagers, or user-funded prize pools exist here. */}
+        {/* Daily challenge */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-accent bg-panel-raised p-4 sm:flex-row sm:items-center"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-panel">
+              <Icon name={challenge.icon} size={20} className="text-accent" />
+            </div>
+            <div>
+              <p className="font-mono text-[10px] tracking-widest text-accent">DAILY CHALLENGE</p>
+              <p className="font-body text-sm font-semibold text-text">{challenge.name}</p>
+            </div>
+          </div>
+          <Button onClick={() => playGame(challenge.id)}>
+            Play for +{challenge.bonusXp} bonus XP
+          </Button>
+        </motion.div>
+
+        {/* Prize model disclosure */}
         <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-panel/50 p-3">
           <Info size={14} className="mt-0.5 shrink-0 text-text-faint" />
           <p className="font-mono text-[10px] leading-relaxed text-text-faint">
-            Arena points and leaderboard rankings are for XP and recognition only.
-            There is no deposit, withdrawal, or cash-wagering feature — any future
-            prize would be funded by Flux directly, never pooled from user funds.
+            Arena points, ranks, and leaderboard positions are for XP and recognition only.
+            There is no deposit, withdrawal, or cash-wagering feature — any future prize
+            would be funded by Flux directly, never pooled from user funds.
           </p>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr]">
           {/* Game grid */}
-          <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {games.map((game) => {
-              const unlocked = hasAccess(userTier, game.minTier);
-              const best = getBestScore(game.id);
-              return (
-                <StaggerItem key={game.id} variants={fadeUp}>
-                  <motion.div {...hoverLift} className="flex h-full flex-col rounded-xl border border-border bg-panel p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-panel-raised">
-                        <Icon name={game.icon} size={20} className="text-accent" />
+          <div>
+            <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">GAMES</p>
+            <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {games.map((game) => {
+                const unlocked = hasAccess(userTier, game.minTier);
+                const best = getBestScore(game.id);
+                return (
+                  <StaggerItem key={game.id} variants={fadeUp}>
+                    <motion.div {...hoverLift} className="flex h-full flex-col rounded-xl border border-border bg-panel p-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-panel-raised">
+                          <Icon name={game.icon} size={20} className="text-accent" />
+                        </div>
+                        <span className="font-mono text-[10px] text-accent">+{game.xpReward} XP</span>
                       </div>
-                      <span className="font-mono text-[10px] text-accent">+{game.xpReward} XP</span>
-                    </div>
-                    <h3 className="mt-3 font-display text-base font-semibold text-text">{game.name}</h3>
-                    <p className="mt-1 flex-1 font-body text-sm text-text-muted">{game.description}</p>
-                    {best > 0 && (
-                      <p className="mt-2 font-mono text-[10px] text-text-faint">Personal best: {best}</p>
-                    )}
-                    <div className="mt-4">
-                      {!unlocked ? (
-                        <Button variant="secondary" size="sm" onClick={() => router.push("/pricing")} className="w-full">
-                          <Lock size={12} /> {tierById(game.minTier).name}
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => setActiveGame(game.id)} className="w-full">
-                          Play now
-                        </Button>
+                      <h3 className="mt-3 font-display text-base font-semibold text-text">{game.name}</h3>
+                      <p className="mt-1 flex-1 font-body text-sm text-text-muted">{game.description}</p>
+                      {best > 0 && (
+                        <p className="mt-2 font-mono text-[10px] text-text-faint">Personal best: {best}</p>
                       )}
+                      <div className="mt-4">
+                        {!unlocked ? (
+                          <Button variant="secondary" size="sm" onClick={() => router.push("/pricing")} className="w-full">
+                            <Lock size={12} /> {tierById(game.minTier).name}
+                          </Button>
+                        ) : (
+                          <Button size="sm" onClick={() => playGame(game.id)} className="w-full">
+                            Play now
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  </StaggerItem>
+                );
+              })}
+            </Stagger>
+
+            {/* League divisions */}
+            <div className="mt-8">
+              <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">{currentSeason.name.toUpperCase()}</p>
+              <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-panel p-4">
+                {leagueDivisions.map((d) => {
+                  const reached = xp >= d.minXp;
+                  const isCurrent = d.id === division.id;
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex items-center gap-2 rounded-full px-3 py-1.5"
+                      style={{
+                        background: isCurrent ? `${d.color}22` : "transparent",
+                        border: `1px solid ${isCurrent ? d.color : "var(--color-border)"}`,
+                        opacity: reached ? 1 : 0.45,
+                      }}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                      <span className="font-mono text-[11px]" style={{ color: isCurrent ? d.color : "var(--color-text-muted)" }}>
+                        {d.label}
+                      </span>
                     </div>
-                  </motion.div>
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
           {/* Arena leaderboard */}
           <div className="rounded-xl border border-border bg-panel p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-sm font-semibold text-text">Arena leaderboard</h3>
-              <span className="font-mono text-xs text-text-faint">This season</span>
+              <span className="font-mono text-xs text-text-faint">{currentSeason.name}</span>
             </div>
             <Leaderboard
               rows={arenaLeaderboard.map((e) => ({
@@ -154,6 +260,17 @@ export default function GamesPage() {
       <Footer />
       <XpToast toasts={toasts} />
     </main>
+  );
+}
+
+function ArenaStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-bg/30 p-3">
+      <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-wide text-text-faint">
+        {icon} {label.toUpperCase()}
+      </p>
+      <p className="mt-1 font-display text-base font-semibold text-text">{value}</p>
+    </div>
   );
 }
 
