@@ -11,7 +11,7 @@ import { fadeUp } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import { tierById, isTrialActive } from "@/lib/tiers";
 import { earnedTitles, activeTitle } from "@/lib/socialData";
-import { achievements } from "@/lib/ecosystemData";
+import { useAchievements } from "@/lib/useAchievements";
 
 function Icon({ name, size = 18, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Award) as React.ComponentType<{
@@ -23,13 +23,14 @@ function Icon({ name, size = 18, className = "" }: { name: string; size?: number
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
+  const { achievements, loading: achievementsLoading } = useAchievements();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || achievementsLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>

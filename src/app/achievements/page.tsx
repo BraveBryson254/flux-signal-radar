@@ -7,12 +7,13 @@ import * as Icons from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/lib/mockAuth";
-import { achievements } from "@/lib/ecosystemData";
+import { useAchievements } from "@/lib/useAchievements";
 
 type Filter = "all" | "unlocked" | "locked";
 
 export default function AchievementsPage() {
   const { user, isLoading } = useAuth();
+  const { achievements, loading: achievementsLoading } = useAchievements();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -20,7 +21,7 @@ export default function AchievementsPage() {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || achievementsLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>

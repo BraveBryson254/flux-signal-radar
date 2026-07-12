@@ -34,7 +34,7 @@ export interface Achievement {
 }
 
 export const achievements: Achievement[] = [
-  { id: "a1", label: "First Signal", icon: "Radar", unlocked: true },
+  { id: "a1", label: "Arena Debut", icon: "Radar", unlocked: true },
   { id: "a2", label: "3-Day Streak", icon: "Flame", unlocked: true },
   { id: "a3", label: "First Journal Entry", icon: "BookOpen", unlocked: true },
   { id: "a4", label: "Academy Graduate", icon: "GraduationCap", unlocked: false },

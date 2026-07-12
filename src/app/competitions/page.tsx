@@ -1,18 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Clock, Users, Medal } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp, hoverLift } from "@/lib/motionSystem";
+import { competitions, Competition } from "@/lib/socialData";
 import {
-  competitions,
-  competitionLeaderboard,
-  recentWinners,
-  Competition,
-} from "@/lib/socialData";
+  fetchEntrantCount,
+  hasJoined,
+  joinCompetition,
+  leaveCompetition,
+  fetchCompetitionLeaderboard,
+  CompetitionLeaderRow,
+} from "@/lib/competitionsService";
+import { useAuth } from "@/lib/mockAuth";
 import Leaderboard from "@/components/Leaderboard";
 
 const statusStyle: Record<Competition["status"], { label: string; color: string }> = {
@@ -21,11 +25,61 @@ const statusStyle: Record<Competition["status"], { label: string; color: string 
   ended: { label: "ENDED", color: "var(--color-text-faint)" },
 };
 
-export default function CompetitionsPage() {
-  const [joined, setJoined] = useState<string[]>([]);
+// The competition the sidebar leaderboard focuses on — the flagship live cup.
+const FEATURED_COMPETITION_ID = "cmp1";
 
-  const toggleJoin = (id: string) =>
-    setJoined((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+export default function CompetitionsPage() {
+  const { user } = useAuth();
+  const [joined, setJoined] = useState<Set<string>>(new Set());
+  const [entrantCounts, setEntrantCounts] = useState<Record<string, number>>({});
+  const [leaderboard, setLeaderboard] = useState<CompetitionLeaderRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    Promise.all(competitions.map((c) => fetchEntrantCount(c.id).then((n) => [c.id, n] as const))).then(
+      (counts) => {
+        const countMap: Record<string, number> = {};
+        counts.forEach(([id, n]) => (countMap[id] = n));
+        setEntrantCounts(countMap);
+      }
+    );
+
+    if (user) {
+      Promise.all(competitions.map((c) => hasJoined(c.id, user.id).then((j) => [c.id, j] as const))).then(
+        (flags) => {
+          const joinedSet = new Set<string>();
+          flags.forEach(([id, j]) => {
+            if (j) joinedSet.add(id);
+          });
+          setJoined(joinedSet);
+        }
+      );
+    }
+
+    fetchCompetitionLeaderboard(FEATURED_COMPETITION_ID).then((board) => {
+      setLeaderboard(board);
+      setLoaded(true);
+    });
+  }, [user]);
+
+  const toggleJoin = async (id: string) => {
+    if (!user) return;
+    const isJoined = joined.has(id);
+    setJoined((prev) => {
+      const next = new Set(prev);
+      if (isJoined) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setEntrantCounts((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + (isJoined ? -1 : 1) }));
+
+    if (isJoined) await leaveCompetition(id, user.id);
+    else await joinCompetition(id, user.id);
+
+    if (id === FEATURED_COMPETITION_ID) {
+      fetchCompetitionLeaderboard(FEATURED_COMPETITION_ID).then(setLeaderboard);
+    }
+  };
 
   return (
     <main>
@@ -37,8 +91,8 @@ export default function CompetitionsPage() {
             Competitions
           </h1>
           <p className="mt-3 max-w-xl font-body text-text-muted">
-            Weekly cups, monthly championships, and seasonal leagues. Climb the
-            board, earn titles, and win subscription time.
+            Weekly cups, monthly championships, and seasonal leagues. Entrants,
+            join state, and the leaderboard below are all real.
           </p>
         </Reveal>
 
@@ -47,7 +101,8 @@ export default function CompetitionsPage() {
             <Stagger className="space-y-4">
               {competitions.map((c) => {
                 const s = statusStyle[c.status];
-                const isJoined = joined.includes(c.id);
+                const isJoined = joined.has(c.id);
+                const entrants = loaded ? entrantCounts[c.id] ?? 0 : c.entrants;
                 return (
                   <StaggerItem key={c.id} variants={fadeUp}>
                     <motion.div {...hoverLift} className="rounded-xl border border-border bg-panel p-5">
@@ -85,7 +140,7 @@ export default function CompetitionsPage() {
                           <p className="flex items-center gap-1 text-text-faint">
                             <Users size={11} /> Entrants
                           </p>
-                          <p className="mt-0.5 text-text">{c.entrants}</p>
+                          <p className="mt-0.5 text-text">{entrants}</p>
                         </div>
                         <div>
                           <p className="flex items-center gap-1 text-text-faint">
@@ -97,7 +152,8 @@ export default function CompetitionsPage() {
 
                       <button
                         onClick={() => toggleJoin(c.id)}
-                        className="mt-4 w-full rounded-lg py-2 font-body text-sm font-semibold transition-transform hover:scale-[1.01]"
+                        disabled={!user}
+                        className="mt-4 w-full rounded-lg py-2 font-body text-sm font-semibold transition-transform hover:scale-[1.01] disabled:opacity-50"
                         style={{
                           background: isJoined ? "transparent" : "var(--color-accent)",
                           color: isJoined ? "var(--color-accent)" : "var(--color-bg)",
@@ -116,43 +172,23 @@ export default function CompetitionsPage() {
           <div className="space-y-6">
             <div className="rounded-xl border border-border bg-panel p-5">
               <h3 className="mb-4 font-display text-sm font-semibold text-text">Weekly Demo Cup — live board</h3>
-              <Leaderboard
-                rows={competitionLeaderboard.map((e) => ({
-                  rank: e.rank,
-                  name: e.name,
-                  region: e.region,
-                  value: e.score,
-                  you: e.you,
-                }))}
-              />
-            </div>
-
-            <div className="rounded-xl border border-border bg-panel p-5">
-              <h3 className="mb-4 font-display text-sm font-semibold text-text">Recent winners</h3>
-              <div className="space-y-3">
-                {recentWinners.map((w, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.08 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-panel-raised">
-                      <Trophy size={14} className="text-accent" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-body text-sm text-text">
-                        {w.name} · <span className="text-text-faint">{w.region}</span>
-                      </p>
-                      <p className="truncate font-mono text-[10px] text-text-faint">
-                        {w.event} — {w.prize}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <p className="mb-3 font-mono text-[10px] text-text-faint">
+                Ranked by total Arena points among entrants.
+              </p>
+              {leaderboard.length > 0 ? (
+                <Leaderboard
+                  rows={leaderboard.map((e, i) => ({
+                    rank: i + 1,
+                    name: e.name,
+                    value: `${e.score.toLocaleString()} pts`,
+                    you: e.userId === user?.id,
+                  }))}
+                />
+              ) : (
+                <p className="font-body text-sm text-text-muted">
+                  No entrants yet — join to be the first on the board.
+                </p>
+              )}
             </div>
           </div>
         </div>

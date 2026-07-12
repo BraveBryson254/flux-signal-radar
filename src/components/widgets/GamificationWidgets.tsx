@@ -5,12 +5,8 @@ import * as Icons from "lucide-react";
 import { Flame, Coins, Check } from "lucide-react";
 import Widget from "./Widget";
 import { MockUser } from "@/lib/mockAuth";
-import {
-  dailyMissions,
-  weeklyMissions,
-  achievements,
-  Mission,
-} from "@/lib/ecosystemData";
+import { dailyMissions, weeklyMissions, Mission } from "@/lib/ecosystemData";
+import { useAchievements } from "@/lib/useAchievements";
 
 // XP needed for the next level scales linearly for the mock.
 function levelProgress(xp: number, level: number) {
@@ -146,6 +142,7 @@ export function MissionsWidget({ index }: { index: number }) {
 }
 
 export function AchievementsWidget({ index }: { index: number }) {
+  const { achievements, loading } = useAchievements();
   return (
     <Widget
       title="Achievements"
@@ -156,6 +153,9 @@ export function AchievementsWidget({ index }: { index: number }) {
         </a>
       }
     >
+      {loading ? (
+        <p className="font-mono text-xs text-text-faint">Loading...</p>
+      ) : (
       <div className="grid grid-cols-3 gap-3">
         {achievements.map((a) => {
           const Icon = (Icons[a.icon as keyof typeof Icons] ??
@@ -177,6 +177,7 @@ export function AchievementsWidget({ index }: { index: number }) {
           );
         })}
       </div>
+      )}
     </Widget>
   );
 }
