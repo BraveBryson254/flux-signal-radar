@@ -11,6 +11,7 @@ import { Reveal } from "@/components/motion/Motion";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess } from "@/lib/tiers";
 import { defaultPreferences, NotificationPreferences } from "@/lib/notificationData";
+import { fetchPreferences, savePreferences } from "@/lib/notificationService";
 
 function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
   return (
@@ -33,13 +34,25 @@ export default function NotificationSettingsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [prefs, setPrefs] = useState<NotificationPreferences>(defaultPreferences);
+  const [prefsLoading, setPrefsLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPrefsLoading(true);
+    fetchPreferences(user.id).then((data) => {
+      setPrefs(data);
+      setPrefsLoading(false);
+    });
+  }, [user]);
+
+  if (isLoading || !user || prefsLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>
@@ -55,8 +68,10 @@ export default function NotificationSettingsPage() {
     setSaved(false);
   };
 
-  const save = () => {
-    // MOCK — persists to Supabase per-user later
+  const save = async () => {
+    setSaving(true);
+    await savePreferences(user.id, prefs);
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -126,8 +141,9 @@ export default function NotificationSettingsPage() {
         </Section>
 
         <div className="mt-6 flex items-center gap-3">
-          <Button onClick={save}>{saved ? <><Check size={14} /> Saved</> : "Save preferences"}</Button>
-          <span className="font-mono text-[10px] text-text-faint">Syncs to your account once the backend is live.</span>
+          <Button onClick={save} disabled={saving}>
+            {saved ? <><Check size={14} /> Saved</> : saving ? "Saving..." : "Save preferences"}
+          </Button>
         </div>
       </div>
       <Footer />

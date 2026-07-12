@@ -11,12 +11,12 @@ import Footer from "@/components/Footer";
 import { Reveal } from "@/components/motion/Motion";
 import { useAuth } from "@/lib/mockAuth";
 import {
-  notifications as seed,
   notificationCategories,
   lifecycleStageLabels,
   NotificationType,
   AppNotification,
 } from "@/lib/notificationData";
+import { fetchNotifications, updateNotification, deleteNotification, markAllRead as markAllReadService } from "@/lib/notificationService";
 
 function Icon({ name, size = 15, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Bell) as React.ComponentType<{
@@ -31,7 +31,8 @@ type ViewNotification = AppNotification | { kind: "lifecycle"; tradeId: string; 
 export default function NotificationsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [items, setItems] = useState(seed);
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
   const [filter, setFilter] = useState<NotificationType | "all">("all");
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -40,6 +41,16 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setItemsLoading(true);
+    fetchNotifications(user.id).then((data) => {
+      setItems(data);
+      setItemsLoading(false);
+    });
+  }, [user]);
 
   // Group signal-lifecycle events sharing a tradeId into one journey card;
   // everything else stays as an individual item. Computed unconditionally
@@ -64,7 +75,7 @@ export default function NotificationsPage() {
     return [...singles, ...lifecycleGroups];
   }, [items]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || itemsLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>
@@ -72,14 +83,30 @@ export default function NotificationsPage() {
     );
   }
 
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  const toggleRead = (id: string) =>
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
-  const togglePin = (id: string) =>
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n)));
-  const toggleArchive = (id: string) =>
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, archived: !n.archived } : n)));
-  const removeItem = (id: string) => setItems((prev) => prev.filter((n) => n.id !== id));
+  const markAllRead = () => {
+    if (!user) return;
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    markAllReadService(user.id);
+  };
+  const toggleRead = (id: string) => {
+    const next = !items.find((n) => n.id === id)?.read;
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: next } : n)));
+    updateNotification(id, { read: next });
+  };
+  const togglePin = (id: string) => {
+    const next = !items.find((n) => n.id === id)?.pinned;
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, pinned: next } : n)));
+    updateNotification(id, { pinned: next });
+  };
+  const toggleArchive = (id: string) => {
+    const next = !items.find((n) => n.id === id)?.archived;
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, archived: next } : n)));
+    updateNotification(id, { archived: next });
+  };
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((n) => n.id !== id));
+    deleteNotification(id);
+  };
 
   const isGroup = (v: ViewNotification): v is { kind: "lifecycle"; tradeId: string; items: AppNotification[] } =>
     "kind" in v;

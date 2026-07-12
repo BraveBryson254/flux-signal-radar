@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import * as Icons from "lucide-react";
 import { Bell } from "lucide-react";
-import { notifications as seed } from "@/lib/notificationData";
+import { useAuth } from "@/lib/mockAuth";
+import { fetchNotifications, markAllRead as markAllReadService } from "@/lib/notificationService";
 
 function Icon({ name, size = 15, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Bell) as React.ComponentType<{
@@ -16,11 +17,20 @@ function Icon({ name, size = 15, className = "" }: { name: string; size?: number
 }
 
 export default function NotificationCenter() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(seed);
-  const unread = items.filter((n) => !n.read).length;
+  const [items, setItems] = useState<Awaited<ReturnType<typeof fetchNotifications>>>([]);
+  const unread = items.filter((n) => !n.read && !n.archived).length;
 
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  useEffect(() => {
+    if (user) fetchNotifications(user.id).then(setItems);
+  }, [user]);
+
+  const markAllRead = () => {
+    if (!user) return;
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    markAllReadService(user.id);
+  };
 
   return (
     <div className="relative">
@@ -57,7 +67,7 @@ export default function NotificationCenter() {
                 )}
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {items.slice(0, 5).map((n) => (
+                {items.filter((n) => !n.archived).slice(0, 5).map((n) => (
                   <div
                     key={n.id}
                     className="flex gap-3 border-b border-border px-4 py-3 last:border-0"
