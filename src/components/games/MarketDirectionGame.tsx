@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, ArrowDown, Flame, Trophy } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 const ROUNDS = 12;
 
@@ -25,7 +25,7 @@ export default function MarketDirectionGame({ onFinish }: { onFinish: (xp: numbe
   const [bestStreak, setBestStreak] = useState(0);
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   const [done, setDone] = useState(false);
-  const best = getBestScore("g-direction");
+  const { best, submit } = useArenaBestScore("g-direction");
 
   const guess = (dir: "up" | "down") => {
     if (round >= ROUNDS || feedback) return;
@@ -53,7 +53,7 @@ export default function MarketDirectionGame({ onFinish }: { onFinish: (xp: numbe
       if (round + 1 >= ROUNDS) {
         setDone(true);
         const finalScore = score + (correct ? 10 + streak * 2 : 0);
-        setBestScore("g-direction", finalScore);
+        submit(finalScore);
         onFinish(Math.round(finalScore / 3));
       }
     }, 550);

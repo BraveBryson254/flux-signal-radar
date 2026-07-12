@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/mockAuth";
 import { hasAccess } from "@/lib/tiers";
 import { courses } from "@/lib/educationData";
 import { getLessonContent } from "@/lib/lessonContent";
-import { getCompletedLessons, markLessonComplete } from "@/lib/academyProgress";
+import { fetchAcademyProgress, markLessonComplete } from "@/lib/academyProgressService";
 
 export default function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params);
@@ -31,13 +31,13 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const nextId = () => `id-${idCounter.current++}`;
 
   useEffect(() => {
-    if (course) {
-      const seeded = course.lessons.filter((l) => l.done).map((l) => l.id);
-      const persisted = getCompletedLessons(course.id);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!course || !user) return;
+    const seeded = course.lessons.filter((l) => l.done).map((l) => l.id);
+    fetchAcademyProgress(user.id).then((progress) => {
+      const persisted = progress.lessonsByCourse[course.id] ?? [];
       setCompleted(Array.from(new Set([...seeded, ...persisted])));
-    }
-  }, [course]);
+    });
+  }, [course, user]);
 
   useEffect(() => {
     if (!isLoading && user && course && !hasAccess(user.tier, course.minTier)) {
@@ -54,9 +54,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   }
 
   const markComplete = async (id: string, minutes: number) => {
-    if (completed.includes(id)) return;
+    if (completed.includes(id) || !user) return;
     setCompleted((prev) => [...prev, id]);
-    markLessonComplete(course.id, id);
+    markLessonComplete(user.id, course.id, id);
     const xp = Math.round(minutes * 2);
     const result = await claimMission(`lesson-${id}-${nextId()}`, xp, 2);
     const tid = `${id}-${nextId()}`;

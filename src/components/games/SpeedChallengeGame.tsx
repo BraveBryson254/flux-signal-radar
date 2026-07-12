@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Trophy, Check, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { speedQuestions } from "@/lib/gamesData";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 const DURATION = 60;
 
@@ -22,7 +22,7 @@ export default function SpeedChallengeGame({ onFinish }: { onFinish: (xp: number
   const [started, setStarted] = useState(false);
   const [done, setDone] = useState(false);
   const finishedRef = useRef(false);
-  const best = getBestScore("g-speed");
+  const { best, submit } = useArenaBestScore("g-speed");
 
   useEffect(() => {
     if (!started || done) return;
@@ -44,7 +44,7 @@ export default function SpeedChallengeGame({ onFinish }: { onFinish: (xp: number
 
   useEffect(() => {
     if (done) {
-      setBestScore("g-speed", score);
+      submit(score);
       onFinish(Math.round(score * 4));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

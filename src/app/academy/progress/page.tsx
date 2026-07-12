@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/mockAuth";
 import { courses } from "@/lib/educationData";
 import { books } from "@/lib/educationData";
 import { articles } from "@/lib/articleData";
-import { getAllCompletedLessons, getReadBooks, getReadArticles } from "@/lib/academyProgress";
+import { fetchAcademyProgress } from "@/lib/academyProgressService";
 
 export default function AcademyProgressPage() {
   const { user, isLoading } = useAuth();
@@ -20,19 +20,25 @@ export default function AcademyProgressPage() {
   const [completedByCourse, setCompletedByCourse] = useState<Record<string, string[]>>({});
   const [readBooks, setReadBooks] = useState<string[]>([]);
   const [readArticles, setReadArticles] = useState<string[]>([]);
+  const [progressLoading, setProgressLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
   useEffect(() => {
+    if (!user) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCompletedByCourse(getAllCompletedLessons());
-    setReadBooks(getReadBooks());
-    setReadArticles(getReadArticles());
-  }, []);
+    setProgressLoading(true);
+    fetchAcademyProgress(user.id).then((progress) => {
+      setCompletedByCourse(progress.lessonsByCourse);
+      setReadBooks(progress.books);
+      setReadArticles(progress.articles);
+      setProgressLoading(false);
+    });
+  }, [user]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || progressLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>

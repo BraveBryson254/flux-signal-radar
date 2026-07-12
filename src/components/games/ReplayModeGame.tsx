@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Play, Pause, ArrowUp, ArrowDown, Trophy } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { replayBars } from "@/lib/gamesData";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 const HOLD_BARS = 6;
 
@@ -14,7 +14,7 @@ export default function ReplayModeGame({ onFinish }: { onFinish: (xp: number) =>
   const [entry, setEntry] = useState<{ index: number; price: number; dir: "long" | "short" } | null>(null);
   const [result, setResult] = useState<{ rMultiple: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const best = getBestScore("g-replay");
+  const { best, submit } = useArenaBestScore("g-replay");
 
   useEffect(() => {
     if (!playing) return;
@@ -46,7 +46,7 @@ export default function ReplayModeGame({ onFinish }: { onFinish: (xp: number) =>
       setResult({ rMultiple });
       setPlaying(false);
       const finalScore = Math.round(rMultiple * 20 + 40);
-      setBestScore("g-replay", Math.max(finalScore, 0));
+      submit(Math.max(finalScore, 0));
       onFinish(Math.max(finalScore, 10));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

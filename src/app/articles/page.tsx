@@ -11,7 +11,7 @@ import { fadeUp, hoverLift } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess, tierById } from "@/lib/tiers";
 import { articles, glossary, Article } from "@/lib/articleData";
-import { markArticleRead } from "@/lib/academyProgress";
+import { markArticleRead } from "@/lib/academyProgressService";
 
 export default function ArticlesPage() {
   const { user } = useAuth();
@@ -72,7 +72,7 @@ export default function ArticlesPage() {
                   onClick={() => {
                     if (!unlocked) return;
                     setOpen(article);
-                    markArticleRead(article.id);
+                    if (user) markArticleRead(user.id, article.id);
                   }}
                   className="flex h-full w-full flex-col rounded-xl border border-border bg-panel p-5 text-left"
                 >

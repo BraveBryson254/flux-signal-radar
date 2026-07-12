@@ -6,10 +6,12 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bookmark, List, Sun, Moon } from "lucide-react";
 import Header from "@/components/Header";
 import { books, sampleChapters } from "@/lib/educationData";
-import { markBookRead } from "@/lib/academyProgress";
+import { markBookRead } from "@/lib/academyProgressService";
+import { useAuth } from "@/lib/mockAuth";
 
 export default function ReaderPage({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = use(params);
+  const { user } = useAuth();
   const book = books.find((b) => b.id === bookId);
   const [chapter, setChapter] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
@@ -17,8 +19,8 @@ export default function ReaderPage({ params }: { params: Promise<{ bookId: strin
   const [sepia, setSepia] = useState(false);
 
   useEffect(() => {
-    if (book) markBookRead(book.id);
-  }, [book]);
+    if (book && user) markBookRead(user.id, book.id);
+  }, [book, user]);
 
   if (!book) {
     return (

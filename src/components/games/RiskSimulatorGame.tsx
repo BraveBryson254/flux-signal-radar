@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Skull } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 const ROUNDS = 15;
 const WIN_RATE = 0.42;
@@ -26,7 +26,7 @@ export default function RiskSimulatorGame({ onFinish }: { onFinish: (xp: number)
   const [lastResult, setLastResult] = useState<"win" | "loss" | null>(null);
   const [blown, setBlown] = useState(false);
   const [done, setDone] = useState(false);
-  const best = getBestScore("g-risk");
+  const { best, submit } = useArenaBestScore("g-risk");
 
   const playRisk = (riskPct: number) => {
     if (done || blown) return;
@@ -44,14 +44,14 @@ export default function RiskSimulatorGame({ onFinish }: { onFinish: (xp: number)
       if (isBlown) {
         setBlown(true);
         setDone(true);
-        setBestScore("g-risk", Math.round(newBalance));
+        submit(Math.round(newBalance));
         onFinish(10);
         return;
       }
       setRound(nextRound);
       if (nextRound >= ROUNDS) {
         setDone(true);
-        setBestScore("g-risk", Math.round(newBalance));
+        submit(Math.round(newBalance));
         const growth = Math.max(0, newBalance - START_BALANCE) / START_BALANCE;
         onFinish(Math.round(30 + growth * 100));
       }

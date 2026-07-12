@@ -5,14 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Trophy } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { liquidityScenarios } from "@/lib/gamesData";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 export default function LiquidityHuntGame({ onFinish }: { onFinish: (xp: number) => void }) {
   const [round, setRound] = useState(0);
   const [chosen, setChosen] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
-  const best = getBestScore("g-liquidity");
+  const { best, submit } = useArenaBestScore("g-liquidity");
 
   const scenario = liquidityScenarios[round];
 
@@ -25,7 +25,7 @@ export default function LiquidityHuntGame({ onFinish }: { onFinish: (xp: number)
   const next = () => {
     if (round + 1 >= liquidityScenarios.length) {
       const finalScore = score;
-      setBestScore("g-liquidity", finalScore);
+      submit(finalScore);
       setDone(true);
       onFinish(finalScore * 12);
       return;

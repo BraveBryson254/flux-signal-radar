@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Flame } from "lucide-react";
-import { getBestScore, setBestScore } from "@/lib/arenaScores";
+import { useArenaBestScore } from "@/lib/useArenaBestScore";
 
 const DURATION = 45;
 
@@ -45,7 +45,7 @@ export default function CandlestickNinjaGame({ onFinish }: { onFinish: (xp: numb
   const [timeLeft, setTimeLeft] = useState(DURATION);
   const [started, setStarted] = useState(false);
   const [done, setDone] = useState(false);
-  const best = getBestScore("g-ninja");
+  const { best, submit } = useArenaBestScore("g-ninja");
   const spawnTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const targetSwitchTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -83,7 +83,7 @@ export default function CandlestickNinjaGame({ onFinish }: { onFinish: (xp: numb
   useEffect(() => {
     if (done) {
       const finalScore = score;
-      setBestScore("g-ninja", finalScore);
+      submit(finalScore);
       onFinish(Math.round(finalScore * 1.2));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Icons from "lucide-react";
@@ -14,8 +14,8 @@ import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp, hoverLift } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import { hasAccess, tierById } from "@/lib/tiers";
-import { games, patternQuestions, arenaLeaderboard } from "@/lib/gamesData";
-import { getBestScore } from "@/lib/arenaScores";
+import { games, patternQuestions } from "@/lib/gamesData";
+import { getAllBestScores, fetchArenaLeaderboard, submitScore, ArenaLeaderRow } from "@/lib/arenaScoresService";
 import { rankForXp, divisionForXp, leagueDivisions, currentSeason, dailyChallenge } from "@/lib/arenaProgression";
 import CandlestickNinjaGame from "@/components/games/CandlestickNinjaGame";
 import MarketDirectionGame from "@/components/games/MarketDirectionGame";
@@ -38,6 +38,13 @@ export default function GamesPage() {
   const userTier = user?.tier ?? "free";
   const [activeGame, setActiveGame] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [bestScores, setBestScores] = useState<Record<string, number>>({});
+  const [leaderboard, setLeaderboard] = useState<ArenaLeaderRow[]>([]);
+
+  useEffect(() => {
+    if (user) getAllBestScores(user.id).then(setBestScores);
+    fetchArenaLeaderboard().then(setLeaderboard);
+  }, [user]);
 
   const xp = user?.xp ?? 0;
   const { current: rank, next: nextRank, progress: rankProgress } = rankForXp(xp);
@@ -179,7 +186,7 @@ export default function GamesPage() {
             <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {games.map((game) => {
                 const unlocked = hasAccess(userTier, game.minTier);
-                const best = getBestScore(game.id);
+                const best = bestScores[game.id] ?? 0;
                 return (
                   <StaggerItem key={game.id} variants={fadeUp}>
                     <motion.div {...hoverLift} className="flex h-full flex-col rounded-xl border border-border bg-panel p-5">
@@ -245,15 +252,20 @@ export default function GamesPage() {
               <h3 className="font-display text-sm font-semibold text-text">Arena leaderboard</h3>
               <span className="font-mono text-xs text-text-faint">{currentSeason.name}</span>
             </div>
-            <Leaderboard
-              rows={arenaLeaderboard.map((e) => ({
-                rank: e.rank,
-                name: e.name,
-                region: e.region,
-                value: `${e.points.toLocaleString()} pts`,
-                you: e.you,
-              }))}
-            />
+            {leaderboard.length > 0 ? (
+              <Leaderboard
+                rows={leaderboard.map((e, i) => ({
+                  rank: i + 1,
+                  name: e.name,
+                  value: `${e.points.toLocaleString()} pts`,
+                  you: e.userId === user?.id,
+                }))}
+              />
+            ) : (
+              <p className="font-body text-sm text-text-muted">
+                No scores yet — be the first to play and set the pace.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -275,6 +287,7 @@ function ArenaStat({ icon, label, value }: { icon: React.ReactNode; label: strin
 }
 
 function PatternGame({ onFinish }: { onFinish: (score: number) => void }) {
+  const { user } = useAuth();
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -293,7 +306,9 @@ function PatternGame({ onFinish }: { onFinish: (score: number) => void }) {
   const next = () => {
     if (current + 1 >= patternQuestions.length) {
       setDone(true);
-      onFinish(score + (selected === q.answerIndex ? 0 : 0));
+      const finalScore = score + (selected === q.answerIndex ? 0 : 0);
+      if (user) submitScore(user.id, user.name, "g-pattern", finalScore);
+      onFinish(finalScore);
       return;
     }
     setCurrent((c) => c + 1);
