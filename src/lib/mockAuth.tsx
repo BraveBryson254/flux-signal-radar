@@ -27,6 +27,7 @@ export interface MockUser {
   /** The tier actually paid for, independent of trial status. */
   paidTier: Tier;
   trialEndsAt: string | null;
+  referralCode: string;
   xp: number;
   level: number;
   coins: number;
@@ -46,6 +47,7 @@ interface ProfileRow {
   last_login_date: string;
   claimed_mission_ids: string[];
   trial_ends_at: string | null;
+  referral_code: string;
 }
 
 function rowToUser(row: ProfileRow): MockUser {
@@ -56,6 +58,7 @@ function rowToUser(row: ProfileRow): MockUser {
     tier: effectiveTier(row.tier, row.trial_ends_at),
     paidTier: row.tier,
     trialEndsAt: row.trial_ends_at,
+    referralCode: row.referral_code,
     xp: row.xp,
     level: row.level,
     coins: row.coins,
@@ -72,7 +75,8 @@ interface AuthContextValue {
   signup: (
     email: string,
     password: string,
-    name: string
+    name: string,
+    referredByCode?: string
   ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   logout: () => Promise<void>;
   setTier: (tier: Tier) => Promise<void>;
@@ -159,12 +163,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (email: string, password: string, name: string, referredByCode?: string) => {
     setAuthError(null);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: { data: { name, referred_by_code: referredByCode ?? null } },
     });
     if (error) {
       setAuthError(error.message);

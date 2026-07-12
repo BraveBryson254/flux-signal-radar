@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ParticleField from "@/components/ParticleField";
 import SmoothScroll from "@/components/SmoothScroll";
+import ReferralCapture from "@/components/ReferralCapture";
 import { AuthProvider } from "@/lib/mockAuth";
 import { CurrencyProvider } from "@/lib/currency";
 
@@ -41,6 +42,7 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <ParticleField />
+        <ReferralCapture />
         <AuthProvider>
           <CurrencyProvider>
             <SmoothScroll>{children}</SmoothScroll>

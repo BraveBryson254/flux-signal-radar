@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Radar, Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/lib/mockAuth";
+import { getStoredReferralCode } from "@/components/ReferralCapture";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -28,7 +29,12 @@ export default function SignupPage() {
     }
 
     setSubmitting(true);
-    const { error: signupError, needsEmailConfirmation } = await signup(email, password, name);
+    const { error: signupError, needsEmailConfirmation } = await signup(
+      email,
+      password,
+      name,
+      getStoredReferralCode() ?? undefined
+    );
     setSubmitting(false);
 
     if (signupError) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Copy, Check, Users, BadgeCheck, Activity, DollarSign, Clock, ImageDown } from "lucide-react";
+import { Copy, Check, Users, DollarSign, TrendingUp, Clock, ImageDown } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Button from "@/components/ui/Button";
@@ -15,15 +15,17 @@ import { Reveal, Stagger, StaggerItem } from "@/components/motion/Motion";
 import { fadeUp } from "@/lib/motionSystem";
 import { useAuth } from "@/lib/mockAuth";
 import {
-  referralStats,
   referralMilestones,
-  referralActivity,
-  ambassadorLeaderboard,
   ambassadorRanks,
   rankForReferrals,
-  referralFunnel,
   activeCampaign,
 } from "@/lib/ambassadorData";
+import {
+  fetchReferralData,
+  fetchAmbassadorLeaderboard,
+  ReferralData,
+  AmbassadorLeaderRow,
+} from "@/lib/ambassadorService";
 
 function Icon({ name, size = 18, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Star) as React.ComponentType<{
@@ -33,23 +35,42 @@ function Icon({ name, size = 18, className = "" }: { name: string; size?: number
   return <Cmp size={size} className={className} />;
 }
 
-const statusColor: Record<string, string> = {
-  clicked: "var(--color-text-faint)",
-  "signed up": "var(--color-neutral)",
-  verified: "var(--color-accent)",
-  subscribed: "var(--color-bull)",
-};
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 1) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w ago`;
+}
 
 export default function AmbassadorPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [data, setData] = useState<ReferralData | null>(null);
+  const [leaderboard, setLeaderboard] = useState<AmbassadorLeaderRow[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !user) router.push("/login");
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) {
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDataLoading(true);
+    Promise.all([fetchReferralData(user.id, user.referralCode), fetchAmbassadorLeaderboard()]).then(
+      ([referral, board]) => {
+        setData(referral);
+        setLeaderboard(board);
+        setDataLoading(false);
+      }
+    );
+  }, [user]);
+
+  if (isLoading || !user || dataLoading || !data) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <p className="font-mono text-xs text-text-faint">LOADING...</p>
@@ -57,13 +78,11 @@ export default function AmbassadorPage() {
     );
   }
 
-  const { current, next } = rankForReferrals(referralStats.verified);
-  const progressToNext = next
-    ? Math.min(100, (referralStats.verified / next.minReferrals) * 100)
-    : 100;
+  const { current, next } = rankForReferrals(data.total);
+  const progressToNext = next ? Math.min(100, (data.total / next.minReferrals) * 100) : 100;
 
   const copy = () => {
-    navigator.clipboard?.writeText(referralStats.link).catch(() => {});
+    navigator.clipboard?.writeText(data.link).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
@@ -78,12 +97,12 @@ export default function AmbassadorPage() {
             Flux Ambassador
           </h1>
           <p className="mt-3 max-w-xl font-body text-text-muted">
-            Grow the community and earn recognition. Rewards unlock as the people
-            you invite reach real milestones — never for empty signups.
+            Grow the community and earn recognition. Every number on this page reflects
+            people who actually signed up through your link.
           </p>
         </Reveal>
 
-        {/* Active campaign */}
+        {/* Active campaign — platform-wide promotion, not per-user data */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,7 +120,7 @@ export default function AmbassadorPage() {
           </span>
         </motion.div>
 
-        {/* Rank + progress */}
+        {/* Rank + progress — computed from real referral count */}
         <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-panel to-panel-raised p-6">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-4">
@@ -110,16 +129,14 @@ export default function AmbassadorPage() {
               </div>
               <div>
                 <p className="font-display text-lg font-semibold text-text">{current.label}</p>
-                <p className="font-mono text-[11px] text-text-faint">
-                  {referralStats.verified} verified referrals
-                </p>
+                <p className="font-mono text-[11px] text-text-faint">{data.total} people referred</p>
               </div>
             </div>
             {next && (
               <div className="w-full sm:w-64">
                 <div className="flex items-center justify-between font-mono text-[11px] text-text-faint">
                   <span>Progress to {next.label}</span>
-                  <span>{referralStats.verified}/{next.minReferrals}</span>
+                  <span>{data.total}/{next.minReferrals}</span>
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-bg/40">
                   <motion.div
@@ -140,14 +157,14 @@ export default function AmbassadorPage() {
             <p className="mb-2 font-mono text-[10px] tracking-widest text-text-faint">YOUR REFERRAL LINK</p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="flex-1 truncate rounded-lg border border-border bg-panel-raised px-3 py-2.5 font-mono text-sm text-text-muted">
-                {referralStats.link}
+                {data.link}
               </div>
               <Button onClick={copy} className="shrink-0">
                 {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy link</>}
               </Button>
             </div>
             <p className="mt-2 font-mono text-[10px] text-text-faint">
-              Code: <span className="text-accent">{referralStats.code}</span>
+              Code: <span className="text-accent">{data.code}</span>
             </p>
 
             <button
@@ -155,8 +172,8 @@ export default function AmbassadorPage() {
                 const url = generateShareCard({
                   headline: `${current.label}`,
                   subline: "Growing the Flux Signal Radar community",
-                  statLabel: "Verified referrals",
-                  statValue: String(referralStats.verified),
+                  statLabel: "People referred",
+                  statValue: String(data.total),
                 });
                 if (url) downloadDataUrl(url, "flux-ambassador-card.png");
               }}
@@ -167,83 +184,56 @@ export default function AmbassadorPage() {
           </div>
 
           <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-panel p-5">
-            <QrCode value={referralStats.link} size={120} />
+            <QrCode value={data.link} size={120} />
             <span className="font-mono text-[9px] text-text-faint">Scan to join</span>
           </div>
         </div>
 
-        {/* Stats */}
-        <Stagger className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard icon={<Users size={15} />} label="Total" value={referralStats.total} />
-          <StatCard icon={<BadgeCheck size={15} />} label="Verified" value={referralStats.verified} />
-          <StatCard icon={<Activity size={15} />} label="Active" value={referralStats.active} />
-          <StatCard icon={<DollarSign size={15} />} label="Paying" value={referralStats.paying} />
+        {/* Stats — every number here is a real count from your referrals */}
+        <Stagger className="mt-6 grid grid-cols-3 gap-4">
+          <StatCard icon={<Users size={15} />} label="Total" value={data.total} />
+          <StatCard icon={<DollarSign size={15} />} label="Paying" value={data.paying} />
+          <StatCard icon={<TrendingUp size={15} />} label="Last 30 days" value={data.last30Days} />
         </Stagger>
 
-        {/* Conversion funnel */}
-        <div className="mt-6 rounded-xl border border-border bg-panel p-5">
-          <h3 className="mb-4 font-display text-sm font-semibold text-text">Referral conversion funnel</h3>
-          <div className="space-y-3">
-            {referralFunnel.map((stage, i) => {
-              const max = referralFunnel[0].count || 1;
-              const widthPct = (stage.count / max) * 100;
-              return (
-                <div key={stage.label}>
-                  <div className="mb-1 flex items-center justify-between font-mono text-xs">
-                    <span className="text-text">{stage.label}</span>
-                    <span className="text-text-muted">{stage.count}</span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-panel-raised">
-                    <motion.div
-                      className="h-full rounded-full bg-accent"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${widthPct}%` }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.6, delay: i * 0.08 }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Milestones */}
+          {/* Rewards ladder — informational; per-friend milestone tracking
+              (lesson completion, competition joins) isn't computed yet. */}
           <div className="rounded-xl border border-border bg-panel p-5">
-            <h3 className="mb-4 font-display text-sm font-semibold text-text">Reward milestones (per referral)</h3>
+            <h3 className="mb-4 font-display text-sm font-semibold text-text">Reward ladder (per referral)</h3>
             <div className="space-y-2">
               {referralMilestones.map((m) => (
                 <div key={m.id} className="flex items-center gap-3">
-                  <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
-                    style={{ borderColor: m.done ? "var(--color-bull)" : "var(--color-border)", background: m.done ? "var(--color-bull)" : "transparent" }}
-                  >
-                    {m.done && <Check size={12} className="text-bg" />}
-                  </div>
-                  <span className="flex-1 font-body text-sm" style={{ color: m.done ? "var(--color-text-faint)" : "var(--color-text)" }}>
-                    {m.label}
-                  </span>
+                  <span className="flex-1 font-body text-sm text-text-muted">{m.label}</span>
                   <span className="font-mono text-[10px] text-accent">{m.reward}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Activity */}
+          {/* Activity — real people who signed up through your link */}
           <div className="rounded-xl border border-border bg-panel p-5">
             <h3 className="mb-4 font-display text-sm font-semibold text-text">Referral activity</h3>
-            <div className="space-y-2">
-              {referralActivity.map((a) => (
-                <div key={a.id} className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-text-muted">{a.name}</span>
-                  <span className="font-mono text-xs capitalize" style={{ color: statusColor[a.status] }}>
-                    {a.status}
-                  </span>
-                  <span className="font-mono text-[10px] text-text-faint">{a.time}</span>
-                </div>
-              ))}
-            </div>
+            {data.referred.length === 0 ? (
+              <p className="font-body text-sm text-text-muted">
+                No referrals yet — share your link to get started.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {data.referred.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between">
+                    <span className="font-mono text-sm text-text-muted">{r.name}</span>
+                    <span
+                      className="font-mono text-xs capitalize"
+                      style={{ color: r.tier !== "free" ? "var(--color-bull)" : "var(--color-neutral)" }}
+                    >
+                      {r.tier !== "free" ? "subscribed" : "signed up"}
+                    </span>
+                    <span className="font-mono text-[10px] text-text-faint">{timeAgo(r.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -252,7 +242,7 @@ export default function AmbassadorPage() {
           <h2 className="mb-4 font-display text-lg font-semibold text-text">Ambassador ranks</h2>
           <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {ambassadorRanks.map((r) => {
-              const reached = referralStats.verified >= r.minReferrals;
+              const reached = data.total >= r.minReferrals;
               return (
                 <StaggerItem key={r.id} variants={fadeUp}>
                   <div
@@ -269,27 +259,31 @@ export default function AmbassadorPage() {
           </Stagger>
         </section>
 
-        {/* Leaderboard */}
+        {/* Leaderboard — real, cross-user, from the referral_leaderboard view */}
         <section className="mt-10">
           <div className="rounded-xl border border-border bg-panel p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-sm font-semibold text-text">Top ambassadors</h3>
-              <span className="font-mono text-xs text-text-faint">Kenya · This month</span>
+              <span className="font-mono text-xs text-text-faint">All time</span>
             </div>
-            <Leaderboard
-              rows={ambassadorLeaderboard.map((e) => ({
-                rank: e.rank,
-                name: e.name,
-                region: e.region,
-                value: `${e.referrals} refs`,
-                you: e.you,
-              }))}
-            />
+            {leaderboard.length > 0 ? (
+              <Leaderboard
+                rows={leaderboard.map((e, i) => ({
+                  rank: i + 1,
+                  name: e.name,
+                  value: `${e.referrals} refs`,
+                  you: e.userId === user.id,
+                }))}
+              />
+            ) : (
+              <p className="font-body text-sm text-text-muted">No ambassadors on the board yet.</p>
+            )}
           </div>
         </section>
 
         <p className="mt-6 text-center font-mono text-[10px] text-text-faint">
-          Rewards, attribution, and fraud checks are handled server-side once the backend is live. This is an ethical, milestone-based program — no multi-level commissions.
+          Reward payouts and fraud review are handled server-side once payments are live. This is an
+          ethical, milestone-based program — no multi-level commissions.
         </p>
       </div>
       <Footer />
