@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import * as Icons from "lucide-react";
-import { Heart, MessageCircle } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CountUp from "@/components/CountUp";
@@ -14,12 +14,16 @@ import { useAuth } from "@/lib/mockAuth";
 import {
   fetchPosts,
   createPost,
-  toggleLike,
+  castVote,
+  fetchComments,
+  createComment,
   fetchCommunityStats,
   fetchTopLearners,
   CommunityPost,
+  CommunityComment,
   CommunityStats,
   TopLearnerRow,
+  SortMode,
 } from "@/lib/communityService";
 
 function Icon({ name, size = 16, className = "" }: { name: string; size?: number; className?: string }) {
@@ -30,9 +34,16 @@ function Icon({ name, size = 16, className = "" }: { name: string; size?: number
   return <Cmp size={size} className={className} />;
 }
 
+const SORT_OPTIONS: { id: SortMode; label: string }[] = [
+  { id: "hot", label: "Hot" },
+  { id: "new", label: "New" },
+  { id: "top", label: "Top" },
+];
+
 export default function CommunityPage() {
   const { user } = useAuth();
   const [activeRoom, setActiveRoom] = useState(communityRooms[0].id);
+  const [sort, setSort] = useState<SortMode>("hot");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -48,22 +59,22 @@ export default function CommunityPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPostsLoading(true);
-    fetchPosts(activeRoom, user?.id).then((data) => {
+    fetchPosts(activeRoom, user?.id, sort).then((data) => {
       setPosts(data);
       setPostsLoading(false);
     });
-  }, [activeRoom, user]);
+  }, [activeRoom, user, sort]);
 
-  const handleLike = (post: CommunityPost) => {
+  const handleVote = (post: CommunityPost, value: 1 | -1) => {
     if (!user) return;
+    const removing = post.myVote === value;
+    const delta = removing ? -value : post.myVote === 0 ? value : value * 2;
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === post.id
-          ? { ...p, likedByMe: !p.likedByMe, likeCount: p.likeCount + (p.likedByMe ? -1 : 1) }
-          : p
+        p.id === post.id ? { ...p, score: p.score + delta, myVote: removing ? 0 : value } : p
       )
     );
-    toggleLike(post.id, user.id, post.likedByMe);
+    castVote(post.id, user.id, value, post.myVote);
   };
 
   const handlePost = async () => {
@@ -71,7 +82,7 @@ export default function CommunityPage() {
     setPosting(true);
     await createPost(user.id, user.name, activeRoom, draft.trim());
     setDraft("");
-    const fresh = await fetchPosts(activeRoom, user.id);
+    const fresh = await fetchPosts(activeRoom, user.id, sort);
     setPosts(fresh);
     setPosting(false);
   };
@@ -90,7 +101,6 @@ export default function CommunityPage() {
           </p>
         </Reveal>
 
-        {/* Milestones — real counts */}
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -118,7 +128,6 @@ export default function CommunityPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.6fr_1fr]">
-          {/* Rooms — platform-defined structure, real presence is future scope */}
           <div>
             <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">ROOMS</p>
             <div className="space-y-2">
@@ -148,9 +157,26 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Feed — real posts and likes */}
           <div>
-            <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">DISCUSSION</p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-mono text-[10px] tracking-widest text-text-faint">DISCUSSION</p>
+              <div className="flex gap-1">
+                {SORT_OPTIONS.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSort(s.id)}
+                    className="rounded-full border px-2.5 py-1 font-mono text-[10px] transition-colors"
+                    style={{
+                      borderColor: sort === s.id ? "var(--color-accent)" : "var(--color-border)",
+                      color: sort === s.id ? "var(--color-accent)" : "var(--color-text-muted)",
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {postsLoading ? (
               <p className="font-mono text-xs text-text-faint">Loading...</p>
             ) : posts.length === 0 ? (
@@ -159,41 +185,14 @@ export default function CommunityPage() {
               </div>
             ) : (
               <Stagger className="space-y-3">
-                {posts.map((msg) => (
-                  <StaggerItem key={msg.id} variants={fadeUp}>
-                    <motion.div {...hoverLift} className="rounded-xl border border-border bg-panel p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-panel-raised font-mono text-[10px] text-accent">
-                          {msg.author.slice(0, 2).toUpperCase()}
-                        </div>
-                        <span className="font-body text-sm text-text">{msg.author}</span>
-                        <span className="font-mono text-[10px] text-text-faint">{msg.createdAt}</span>
-                      </div>
-                      <p className="mt-3 font-body text-sm text-text-muted">{msg.body}</p>
-                      <div className="mt-3 flex items-center gap-4">
-                        <button
-                          onClick={() => handleLike(msg)}
-                          disabled={!user}
-                          className="flex items-center gap-1.5 font-mono text-xs transition-colors"
-                          style={{ color: msg.likedByMe ? "var(--color-bear)" : "var(--color-text-faint)" }}
-                        >
-                          <motion.span animate={{ scale: msg.likedByMe ? [1, 1.4, 1] : 1 }} transition={{ duration: 0.3 }}>
-                            <Heart size={13} fill={msg.likedByMe ? "var(--color-bear)" : "none"} />
-                          </motion.span>
-                          {msg.likeCount}
-                        </button>
-                        <span className="flex items-center gap-1.5 font-mono text-xs text-text-faint">
-                          <MessageCircle size={13} />
-                          0
-                        </span>
-                      </div>
-                    </motion.div>
+                {posts.map((post) => (
+                  <StaggerItem key={post.id} variants={fadeUp}>
+                    <PostCard post={post} onVote={handleVote} loggedIn={!!user} />
                   </StaggerItem>
                 ))}
               </Stagger>
             )}
 
-            {/* Real composer */}
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-panel p-3">
               <input
                 value={draft}
@@ -213,7 +212,6 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Top learners — real, from academy_progress counts */}
           <div>
             <p className="mb-3 font-mono text-[10px] tracking-widest text-text-faint">TOP LEARNERS</p>
             {topLearners.length === 0 ? (
@@ -240,5 +238,136 @@ export default function CommunityPage() {
       </div>
       <Footer />
     </main>
+  );
+}
+
+function PostCard({
+  post,
+  onVote,
+  loggedIn,
+}: {
+  post: CommunityPost;
+  onVote: (post: CommunityPost, value: 1 | -1) => void;
+  loggedIn: boolean;
+}) {
+  const { user } = useAuth();
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<CommunityComment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  const toggleComments = async () => {
+    setShowComments((v) => !v);
+    if (!commentsLoaded) {
+      const data = await fetchComments(post.id);
+      setComments(data);
+      setCommentsLoaded(true);
+    }
+  };
+
+  const handleComment = async () => {
+    if (!user || !draft.trim()) return;
+    setPosting(true);
+    await createComment(post.id, user.id, user.name, draft.trim());
+    setDraft("");
+    const fresh = await fetchComments(post.id);
+    setComments(fresh);
+    setPosting(false);
+  };
+
+  return (
+    <motion.div {...hoverLift} className="flex gap-3 rounded-xl border border-border bg-panel p-4">
+      {/* Vote column */}
+      <div className="flex flex-col items-center gap-1 pt-0.5">
+        <button
+          onClick={() => onVote(post, 1)}
+          disabled={!loggedIn}
+          aria-label="Upvote"
+          className="rounded p-0.5 transition-colors disabled:opacity-40"
+          style={{ color: post.myVote === 1 ? "var(--color-bull)" : "var(--color-text-faint)" }}
+        >
+          <ChevronUp size={18} />
+        </button>
+        <span className="font-mono text-xs font-semibold text-text">{post.score}</span>
+        <button
+          onClick={() => onVote(post, -1)}
+          disabled={!loggedIn}
+          aria-label="Downvote"
+          className="rounded p-0.5 transition-colors disabled:opacity-40"
+          style={{ color: post.myVote === -1 ? "var(--color-bear)" : "var(--color-text-faint)" }}
+        >
+          <ChevronDown size={18} />
+        </button>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-panel-raised font-mono text-[9px] text-accent">
+            {post.author.slice(0, 2).toUpperCase()}
+          </div>
+          <span className="font-body text-sm text-text">{post.author}</span>
+          <span className="font-mono text-[10px] text-text-faint">{post.createdAt}</span>
+        </div>
+        <p className="mt-2 font-body text-sm text-text-muted">{post.body}</p>
+        <button
+          onClick={toggleComments}
+          className="mt-3 flex items-center gap-1.5 font-mono text-xs text-text-faint transition-colors hover:text-accent"
+        >
+          <MessageCircle size={13} />
+          {post.commentCount} comment{post.commentCount === 1 ? "" : "s"}
+        </button>
+
+        <AnimatePresence initial={false}>
+          {showComments && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 space-y-3 border-t border-border pt-3">
+                {comments.length === 0 ? (
+                  <p className="font-mono text-[11px] text-text-faint">No comments yet.</p>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c.id} className="flex gap-2">
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-panel-raised font-mono text-[8px] text-accent">
+                        {c.author.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-mono text-[10px] text-text-faint">
+                          {c.author} · {c.createdAt}
+                        </p>
+                        <p className="font-body text-sm text-text-muted">{c.body}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {user && (
+                  <div className="flex gap-2">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleComment()}
+                      placeholder="Add a comment..."
+                      disabled={posting}
+                      className="w-full rounded-lg border border-border bg-panel-raised px-3 py-1.5 font-body text-xs text-text outline-none transition-colors focus:border-accent"
+                    />
+                    <button
+                      onClick={handleComment}
+                      disabled={posting || !draft.trim()}
+                      className="shrink-0 rounded-lg bg-accent px-3 py-1.5 font-mono text-[10px] font-semibold text-bg disabled:opacity-50"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }

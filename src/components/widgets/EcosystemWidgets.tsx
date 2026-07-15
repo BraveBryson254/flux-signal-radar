@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, ArrowDownRight, Trophy } from "lucide-react";
@@ -7,13 +8,14 @@ import Widget from "./Widget";
 import SignalCard from "../SignalCard";
 import Leaderboard from "../Leaderboard";
 import { mockSignals } from "@/lib/mockData";
+import { useAuth } from "@/lib/mockAuth";
+import { fetchArenaLeaderboard, ArenaLeaderRow } from "@/lib/arenaScoresService";
+import { fetchEntrantCount, fetchCompetitionLeaderboard } from "@/lib/competitionsService";
+import { competitions } from "@/lib/socialData";
 import {
   marketOutlook,
-  marketSessions,
   trendingAssets,
   learningProgress,
-  competition,
-  leaderboard,
   recentActivity,
 } from "@/lib/ecosystemData";
 
@@ -80,24 +82,49 @@ export function MarketOutlookWidget({ index }: { index: number }) {
   );
 }
 
+const SESSIONS = [
+  { name: "Sydney", startUtc: 22, endUtc: 7 },
+  { name: "Tokyo", startUtc: 0, endUtc: 9 },
+  { name: "London", startUtc: 7, endUtc: 16 },
+  { name: "New York", startUtc: 12, endUtc: 21 },
+];
+
+function isSessionOpen(startUtc: number, endUtc: number, nowUtcHour: number): boolean {
+  if (startUtc < endUtc) return nowUtcHour >= startUtc && nowUtcHour < endUtc;
+  // Session wraps past midnight UTC (e.g. Sydney 22:00-07:00).
+  return nowUtcHour >= startUtc || nowUtcHour < endUtc;
+}
+
 export function MarketSessionsWidget({ index }: { index: number }) {
+  const [nowHour, setNowHour] = useState<number | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNowHour(new Date().getUTCHours());
+    const id = setInterval(() => setNowHour(new Date().getUTCHours()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <Widget title="Market sessions" index={index}>
       <div className="grid grid-cols-2 gap-2">
-        {marketSessions.map((s) => (
-          <div
-            key={s.name}
-            className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
-          >
-            <span className="font-body text-sm text-text">{s.name}</span>
-            <span
-              className="font-mono text-[10px]"
-              style={{ color: s.open ? "var(--color-bull)" : "var(--color-text-faint)" }}
+        {SESSIONS.map((s) => {
+          const open = nowHour !== null && isSessionOpen(s.startUtc, s.endUtc, nowHour);
+          return (
+            <div
+              key={s.name}
+              className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
             >
-              {s.open ? "OPEN" : "closed"}
-            </span>
-          </div>
-        ))}
+              <span className="font-body text-sm text-text">{s.name}</span>
+              <span
+                className="font-mono text-[10px]"
+                style={{ color: open ? "var(--color-bull)" : "var(--color-text-faint)" }}
+              >
+                {open ? "OPEN" : "closed"}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </Widget>
   );
@@ -167,9 +194,23 @@ export function LearningProgressWidget({ index }: { index: number }) {
 }
 
 export function CompetitionWidget({ index }: { index: number }) {
+  const { user } = useAuth();
+  const [entrants, setEntrants] = useState<number | null>(null);
+  const [yourRank, setYourRank] = useState<number | null>(null);
+  const featured = competitions[0]; // the flagship live competition
+
+  useEffect(() => {
+    fetchEntrantCount(featured.id).then(setEntrants);
+    fetchCompetitionLeaderboard(featured.id, 100).then((board) => {
+      if (!user) return;
+      const idx = board.findIndex((e) => e.userId === user.id);
+      setYourRank(idx >= 0 ? idx + 1 : null);
+    });
+  }, [user, featured.id]);
+
   return (
     <Widget
-      title="Weekly competition"
+      title="Live competition"
       index={index}
       action={
         <Link href="/competitions" className="font-mono text-xs text-accent hover:underline">
@@ -179,22 +220,20 @@ export function CompetitionWidget({ index }: { index: number }) {
     >
       <div className="flex items-center gap-2">
         <Trophy size={16} className="text-accent" />
-        <span className="font-display text-base font-semibold text-text">
-          {competition.name}
-        </span>
+        <span className="font-display text-base font-semibold text-text">{featured.name}</span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 font-mono text-xs">
         <div>
           <p className="text-text-faint">Ends in</p>
-          <p className="mt-0.5 text-text">{competition.endsInHours}h</p>
+          <p className="mt-0.5 text-text">{featured.endsInHours}h</p>
         </div>
         <div>
           <p className="text-text-faint">Entrants</p>
-          <p className="mt-0.5 text-text">{competition.entrants}</p>
+          <p className="mt-0.5 text-text">{entrants ?? "..."}</p>
         </div>
         <div>
           <p className="text-text-faint">Your rank</p>
-          <p className="mt-0.5 text-accent">#{competition.yourRank}</p>
+          <p className="mt-0.5 text-accent">{yourRank ? `#${yourRank}` : "Unranked"}</p>
         </div>
       </div>
     </Widget>
@@ -202,21 +241,37 @@ export function CompetitionWidget({ index }: { index: number }) {
 }
 
 export function LeaderboardWidget({ index }: { index: number }) {
+  const { user } = useAuth();
+  const [rows, setRows] = useState<ArenaLeaderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchArenaLeaderboard(10).then((data) => {
+      setRows(data);
+      setLoading(false);
+    });
+  }, []);
+
   return (
     <Widget
-      title="Leaderboard"
+      title="Arena leaderboard"
       index={index}
-      action={<span className="font-mono text-xs text-text-faint">Kenya · Weekly</span>}
+      action={<span className="font-mono text-xs text-text-faint">All time</span>}
     >
-      <Leaderboard
-        rows={leaderboard.map((e) => ({
-          rank: e.rank,
-          name: e.name,
-          region: e.region,
-          value: e.xp.toLocaleString(),
-          you: e.you,
-        }))}
-      />
+      {loading ? (
+        <p className="font-mono text-xs text-text-faint">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="font-body text-sm text-text-muted">No scores yet — be the first to play.</p>
+      ) : (
+        <Leaderboard
+          rows={rows.map((e, i) => ({
+            rank: i + 1,
+            name: e.name,
+            value: `${e.points.toLocaleString()} pts`,
+            you: e.userId === user?.id,
+          }))}
+        />
+      )}
     </Widget>
   );
 }

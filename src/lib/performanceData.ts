@@ -7,6 +7,7 @@
 export type TradeDirection = "long" | "short";
 export type TradeOutcome = "win" | "loss" | "breakeven";
 export type Emotion = "calm" | "confident" | "anxious" | "greedy" | "fearful";
+export type TradeGrade = "A" | "B" | "C" | "D" | "F";
 
 export interface JournalEntry {
   id: string;
@@ -20,6 +21,13 @@ export interface JournalEntry {
   mistake?: string;
   lesson?: string;
   notes?: string;
+  /** Multiple free-form tags (setup type, mistake type, condition, etc.) —
+   * independent of the single `strategy` field. */
+  tags?: string[];
+  /** Process quality grade, independent of outcome — a good trade can
+   * lose, a bad trade can win. */
+  grade?: TradeGrade;
+  screenshotUrl?: string;
 }
 
 export const journalEntries: JournalEntry[] = [

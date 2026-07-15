@@ -21,6 +21,7 @@ const appLinks = [
   { href: "/community", label: "Community" },
   { href: "/ambassador", label: "Ambassador" },
   { href: "/coach", label: "Coach" },
+  { href: "/journal", label: "Journal" },
 ];
 
 export default function Header() {

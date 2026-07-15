@@ -7,6 +7,7 @@ import * as Icons from "lucide-react";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/lib/mockAuth";
 import { fetchNotifications, markAllRead as markAllReadService } from "@/lib/notificationService";
+import { supabase } from "@/lib/supabaseClient";
 
 function Icon({ name, size = 15, className = "" }: { name: string; size?: number; className?: string }) {
   const Cmp = (Icons[name as keyof typeof Icons] ?? Icons.Bell) as React.ComponentType<{
@@ -24,6 +25,25 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     if (user) fetchNotifications(user.id).then(setItems);
+  }, [user]);
+
+  // Live updates: any new notification row for this user appears
+  // instantly, without needing a page refresh or re-fetch poll.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => {
+          fetchNotifications(user.id).then(setItems);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const markAllRead = () => {
